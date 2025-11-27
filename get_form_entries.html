@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Get Google Form Entry IDs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; margin-top: 0; }
+        .step {
+            background: #e3f2fd;
+            padding: 15px;
+            margin: 20px 0;
+            border-left: 4px solid #2196f3;
+            border-radius: 4px;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px 10px 0;
+        }
+        button:hover { background: #357ae8; }
+        #result {
+            background: #f5f5f5;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            display: none;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .code-block {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .copy-btn {
+            background: #43a047;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+        .copy-btn:hover { background: #2e7d32; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Google Form Entry ID Extractor</h1>
+        
+        <div class="step">
+            <strong>Step 1:</strong> Open your Google Form in edit mode
+        </div>
+        
+        <div class="step">
+            <strong>Step 2:</strong> Click "Preview" (eye icon) to open the form
+        </div>
+        
+        <div class="step">
+            <strong>Step 3:</strong> Copy the form URL and paste it below
+        </div>
+        
+        <label><strong>Form URL:</strong></label>
+        <input type="text" id="formUrl" placeholder="https://docs.google.com/forms/d/e/...">
+        
+        <button onclick="extractEntries()">Extract Entry IDs</button>
+        <button onclick="testForm()" style="background: #ff9800;">Test Form Submission</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function extractEntries() {
+            const formUrl = document.getElementById('formUrl').value.trim();
+            const result = document.getElementById('result');
+            
+            if (!formUrl) {
+                result.style.display = 'block';
+                result.className = 'error';
+                result.textContent = '❌ Please enter a form URL';
+                return;
+            }
+            
+            result.style.display = 'block';
+            result.className = '';
+            result.textContent = '⏳ Fetching form...';
+            
+            try {
+                const response = await fetch(formUrl);
+                const html = await response.text();
+                
+                // Extract all entry IDs
+                const entryRegex = /entry\.(\d+)/g;
+                const entries = new Set();
+                let match;
+                
+                while ((match = entryRegex.exec(html)) !== null) {
+                    entries.add(match[0]);
+                }
+                
+                if (entries.size === 0) {
+                    result.className = 'error';
+                    result.textContent = '❌ No entry IDs found. Make sure the URL is correct.';
+                    return;
+                }
+                
+                const entryArray = Array.from(entries);
+                
+                // Generate code
+                const code = `// Update these lines in background.js (lines 99-106):
+
+formData.append('${entryArray[0] || 'entry.XXXXXXXX'}', violationData.studentEmail || 'unknown@example.com');
+formData.append('${entryArray[1] || 'entry.XXXXXXXX'}', violationData.studentName);
+formData.append('${entryArray[2] || 'entry.XXXXXXXX'}', violationData.formUrl);
+formData.append('${entryArray[3] || 'entry.XXXXXXXX'}', violationData.violationType);
+formData.append('${entryArray[4] || 'entry.XXXXXXXX'}', violationData.violationCount.toString());
+formData.append('${entryArray[5] || 'entry.XXXXXXXX'}', new Date().toISOString());
+formData.append('${entryArray[6] || 'entry.XXXXXXXX'}', getStatusFromCount(violationData.violationCount));
+formData.append('${entryArray[7] || 'entry.XXXXXXXX'}', JSON.stringify(violationData.metadata || {}));
+
+// Found ${entryArray.length} entry IDs:
+${entryArray.map((e, i) => `// ${i + 1}. ${e}`).join('\n')}
+
+// IMPORTANT: Make sure the order matches your form fields!
+// Field 1 (${entryArray[0]}): Should be Email
+// Field 2 (${entryArray[1]}): Should be Name
+// Field 3 (${entryArray[2]}): Should be Form URL
+// Field 4 (${entryArray[3]}): Should be Violation Type
+// Field 5 (${entryArray[4]}): Should be Violation Count
+// Field 6 (${entryArray[5]}): Should be Timestamp
+// Field 7 (${entryArray[6]}): Should be Status
+// Field 8 (${entryArray[7]}): Should be Metadata`;
+                
+                result.className = 'success';
+                result.innerHTML = `
+                    <div style="margin-bottom: 15px;">
+                        ✅ <strong>Found ${entryArray.length} entry IDs!</strong>
+                    </div>
+                    <div class="code-block">${code}</div>
+                    <button class="copy-btn" onclick="copyCode()">📋 Copy Code</button>
+                `;
+                
+                // Store for copying
+                window.generatedCode = code;
+                
+            } catch (error) {
+                result.className = 'error';
+                result.textContent = `❌ Error: ${error.message}\n\nMake sure:\n1. The URL is correct\n2. The form is publicly accessible\n3. You're using the preview URL (not edit URL)`;
+            }
+        }
+        
+        function copyCode() {
+            if (window.generatedCode) {
+                navigator.clipboard.writeText(window.generatedCode).then(() => {
+                    alert('✅ Code copied to clipboard!\n\nNow paste it into background.js');
+                }).catch(err => {
+                    alert('❌ Failed to copy. Please select and copy manually.');
+                });
+            }
+        }
+        
+        async function testForm() {
+            const formUrl = document.getElementById('formUrl').value.trim();
+            const result = document.getElementById('result');
+            
+            if (!formUrl) {
+                result.style.display = 'block';
+                result.className = 'error';
+                result.textContent = '❌ Please enter a form URL';
+                return;
+            }
+            
+            result.style.display = 'block';
+            result.className = '';
+            result.textContent = '⏳ Testing form submission...';
+            
+            try {
+                // First extract entries
+                const response = await fetch(formUrl);
+                const html = await response.text();
+                
+                const entryRegex = /entry\.(\d+)/g;
+                const entries = [];
+                let match;
+                
+                while ((match = entryRegex.exec(html)) !== null) {
+                    if (!entries.includes(match[0])) {
+                        entries.push(match[0]);
+                    }
+                }
+                
+                if (entries.length === 0) {
+                    result.className = 'error';
+                    result.textContent = '❌ No entry IDs found';
+                    return;
+                }
+                
+                // Submit test data
+                const submitUrl = formUrl.replace('/viewform', '/formResponse');
+                const formData = new FormData();
+                
+                formData.append(entries[0], 'test@example.com');
+                formData.append(entries[1], 'Test Student');
+                formData.append(entries[2], 'https://docs.google.com/forms/test');
+                formData.append(entries[3], 'fullscreen-exit');
+                formData.append(entries[4], '1');
+                formData.append(entries[5], new Date().toISOString());
+                formData.append(entries[6], 'Warning');
+                formData.append(entries[7], '{"test": true}');
+                
+                await fetch(submitUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: formData
+                });
+                
+                result.className = 'success';
+                result.textContent = `✅ Test submission sent!\n\nCheck your form responses to verify the data was received.\n\nUsed entries:\n${entries.slice(0, 8).join('\n')}`;
+                
+            } catch (error) {
+                result.className = 'error';
+                result.textContent = `❌ Test failed: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "CRC Exam Lockdown",
+  "version": "1.0.0",
+  "description": "Securely proctors online exams with automated violation detection and prevention",
+  "offline_enabled": false,
+  "minimum_chrome_version": "92",
+
+  "permissions": [
+    "tabs",
+    "scripting",
+    "storage",
+    "identity"
+  ],
+
+  "host_permissions": [
+    "https://docs.google.com/forms/*",
+    "https://docs.google.com/forms/d/e/*",
+    "https://docs.google.com/forms/u/*",
+    "https://script.google.com/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["https://docs.google.com/forms/*/viewform*"],
+      "js": ["exam-config.js", "content.js"],
+      "css": ["overlay.css"],
+      "run_at": "document_start"
+    }
+  ],
+  
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

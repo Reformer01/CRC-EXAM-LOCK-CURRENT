@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Google Sheets Integration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            background: #f5f5f5;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        button {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #357ae8;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Google Sheets Integration Tester</h1>
+    
+    <div class="test-section">
+        <h2>Configuration</h2>
+        <label>Google Sheets Webhook URL:</label>
+        <input type="text" id="webhookUrl" placeholder="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec">
+        <button onclick="saveUrl()">Save URL</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Actions</h2>
+        <button onclick="testLogViolation()">📝 Test Log Violation</button>
+        <button onclick="testCheckClearStatus()">✅ Test Check Clear Status</button>
+        <button onclick="testMultipleViolations()">📊 Test Multiple Violations</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Results</h2>
+        <div id="result">Click a test button to see results...</div>
+    </div>
+
+    <script>
+        // Load saved URL
+        const savedUrl = localStorage.getItem('googleSheetsWebhookUrl');
+        if (savedUrl) {
+            document.getElementById('webhookUrl').value = savedUrl;
+        }
+
+        function saveUrl() {
+            const url = document.getElementById('webhookUrl').value;
+            localStorage.setItem('googleSheetsWebhookUrl', url);
+            showResult('✅ URL saved!', 'success');
+        }
+
+        function getWebhookUrl() {
+            const url = document.getElementById('webhookUrl').value;
+            if (!url) {
+                showResult('❌ Please enter a webhook URL first!', 'error');
+                return null;
+            }
+            return url;
+        }
+
+        function showResult(message, type = '') {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = message;
+            resultDiv.className = type;
+        }
+
+        async function testLogViolation() {
+            const url = getWebhookUrl();
+            if (!url) return;
+
+            showResult('⏳ Sending test violation...', '');
+
+            const testData = {
+                action: 'logViolation',
+                data: {
+                    sessionId: 'test-session-' + Date.now(),
+                    studentName: 'Test Student',
+                    studentEmail: 'test@example.com',
+                    formUrl: 'https://docs.google.com/forms/d/test-form/viewform',
+                    violationType: 'fullscreen-exit',
+                    violationCount: 1,
+                    timestamp: new Date().toISOString(),
+                    status: 'warning',
+                    metadata: { reason: 'test' }
+                }
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showResult(`✅ SUCCESS!\n\nViolation logged to row ${result.row}\n\nResponse:\n${JSON.stringify(result, null, 2)}\n\n✨ Check your Google Sheet!`, 'success');
+                } else {
+                    showResult(`❌ FAILED\n\nError: ${result.error}\n\nResponse:\n${JSON.stringify(result, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ ERROR\n\n${error.message}\n\nMake sure:\n1. The webhook URL is correct\n2. The Apps Script is deployed as a Web App\n3. Access is set to "Anyone"`, 'error');
+            }
+        }
+
+        async function testCheckClearStatus() {
+            const url = getWebhookUrl();
+            if (!url) return;
+
+            showResult('⏳ Checking clear status...', '');
+
+            const testData = {
+                action: 'checkClearStatus',
+                sessionId: 'test-session-123',
+                studentEmail: 'test@example.com'
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (result.cleared) {
+                        showResult(`✅ CLEARED!\n\nViolations have been cleared by admin.\n\nCleared by: ${result.clearedBy}\nCleared at: ${result.clearedAt}`, 'success');
+                    } else {
+                        showResult(`ℹ️ NOT CLEARED\n\nNo cleared violations found for this student.\n\nTo test clearing:\n1. Log a violation first\n2. In Google Sheets, type "YES" in the "Cleared" column\n3. Run this test again`, '');
+                    }
+                } else {
+                    showResult(`❌ FAILED\n\nError: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ ERROR\n\n${error.message}`, 'error');
+            }
+        }
+
+        async function testMultipleViolations() {
+            const url = getWebhookUrl();
+            if (!url) return;
+
+            showResult('⏳ Sending 4 test violations...', '');
+
+            const sessionId = 'test-session-' + Date.now();
+            const violations = [
+                { type: 'fullscreen-exit', count: 1, status: 'warning' },
+                { type: 'tab-switch', count: 2, status: 'lockout-short' },
+                { type: 'window-blur', count: 3, status: 'lockout-long' },
+                { type: 'fullscreen-exit', count: 4, status: 'disqualified' }
+            ];
+
+            let results = [];
+
+            for (let i = 0; i < violations.length; i++) {
+                const v = violations[i];
+                const testData = {
+                    action: 'logViolation',
+                    data: {
+                        sessionId: sessionId,
+                        studentName: 'Test Student (Multiple)',
+                        studentEmail: 'test.multiple@example.com',
+                        formUrl: 'https://docs.google.com/forms/d/test-form/viewform',
+                        violationType: v.type,
+                        violationCount: v.count,
+                        timestamp: new Date().toISOString(),
+                        status: v.status,
+                        metadata: { test: true }
+                    }
+                };
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(testData)
+                    });
+
+                    const result = await response.json();
+                    results.push(`Violation ${i + 1}: ${result.success ? '✅' : '❌'} (Row ${result.row || 'N/A'})`);
+                    
+                    // Small delay between requests
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                } catch (error) {
+                    results.push(`Violation ${i + 1}: ❌ ${error.message}`);
+                }
+            }
+
+            showResult(`📊 Multiple Violations Test Complete!\n\n${results.join('\n')}\n\n✨ Check your Google Sheet for 4 new rows with color coding!`, 'success');
+        }
+    </script>
+</body>
+</html>

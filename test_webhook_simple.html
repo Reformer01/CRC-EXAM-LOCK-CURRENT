@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Webhook Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; max-width: 800px; margin: 0 auto; }
+        input { width: 100%; padding: 10px; margin: 10px 0; font-size: 14px; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; cursor: pointer; }
+        #result { margin-top: 20px; padding: 15px; background: #f5f5f5; white-space: pre-wrap; font-family: monospace; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Simple Webhook Test</h1>
+    
+    <label>Webhook URL:</label>
+    <input type="text" id="url" value="https://script.google.com/macros/s/AKfycbz5fbSc4mm_31C3Lx_wW2r1zToyM-iBBesTglc36i68m5SR-v1xg8HECrrq1olCpGYtyg/exec">
+    
+    <div>
+        <button onclick="testGet()">Test GET (Check if Active)</button>
+        <button onclick="testPost()">Test POST (Log Violation)</button>
+    </div>
+    
+    <div id="result">Click a button to test...</div>
+
+    <script>
+        async function testGet() {
+            const url = document.getElementById('url').value;
+            const result = document.getElementById('result');
+            result.textContent = '⏳ Testing GET request...';
+            result.className = '';
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                result.textContent = '✅ GET SUCCESS!\n\n' + JSON.stringify(data, null, 2);
+                result.className = 'success';
+            } catch (error) {
+                result.textContent = '❌ GET FAILED\n\n' + error.message + '\n\nThis means the webhook URL is incorrect or the deployment is not accessible.';
+                result.className = 'error';
+            }
+        }
+        
+        async function testPost() {
+            const url = document.getElementById('url').value;
+            const result = document.getElementById('result');
+            result.textContent = '⏳ Testing POST request...';
+            result.className = '';
+            
+            const testData = {
+                action: 'logViolation',
+                data: {
+                    sessionId: 'test-' + Date.now(),
+                    studentName: 'Test Student',
+                    studentEmail: 'test@example.com',
+                    formUrl: 'https://docs.google.com/forms/test',
+                    violationType: 'fullscreen-exit',
+                    violationCount: 1,
+                    timestamp: new Date().toISOString(),
+                    status: 'warning'
+                }
+            };
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    result.textContent = '✅ POST SUCCESS!\n\nViolation logged to row ' + data.row + '\n\n' + JSON.stringify(data, null, 2) + '\n\n✨ Check your Google Sheet!';
+                    result.className = 'success';
+                } else {
+                    result.textContent = '❌ POST FAILED\n\n' + JSON.stringify(data, null, 2);
+                    result.className = 'error';
+                }
+            } catch (error) {
+                result.textContent = '❌ POST FAILED\n\n' + error.message;
+                result.className = 'error';
+            }
+        }
+    </script>
+</body>
+</html>
