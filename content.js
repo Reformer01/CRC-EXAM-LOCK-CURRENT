@@ -59,6 +59,7 @@ class ExamLockdown {
       this.integrityCheckInterval = null;
       this.violationClearCheckInterval = null;
       this.fullscreenMonitorInterval = null;
+      this.periodicUrlCheckInterval = null;
       this.storageArea = null;
       this.storageUnavailable = false;
       this.runtimeInvalidated = false;
@@ -184,16 +185,11 @@ class ExamLockdown {
       
       // Also monitor DOM changes that might indicate section navigation
       const observer = new MutationObserver((mutations) => {
-        const urlChanged = mutations.some(mutation => 
-          mutation.type === 'childList' && 
-          mutation.target === document.body
-        );
-        
-        if (urlChanged && this.isExamStarted) {
+        if (this.isExamStarted) {
           // Check if URL actually changed
           const currentUrl = this.getCurrentFormUrl();
           if (currentUrl !== this.lastDetectedUrl) {
-            console.log('[ExamLockdown] DOM-based URL change detected');
+            console.log('[ExamLockdown] DOM-based URL change detected:', currentUrl);
             this.lastDetectedUrl = currentUrl;
             this.handleUrlChange();
           }
@@ -208,6 +204,9 @@ class ExamLockdown {
       });
       
       this.eventListeners.push(() => observer.disconnect());
+      
+      // Add periodic URL checking as fallback for Google Forms
+      this.startPeriodicUrlCheck();
       
     } catch (error) {
       console.error('Error setting up URL change listener:', error);
@@ -224,27 +223,42 @@ class ExamLockdown {
         // Update last detected URL
         this.lastDetectedUrl = currentFormUrl;
         
+        console.log('[ExamLockdown] URL change detected:', {
+          currentFormUrl,
+          previousFormUrl,
+          isExamStarted: this.isExamStarted,
+          examSubmitted: this.examSubmitted
+        });
+        
         // If the base form URL is the same, this is just section navigation
         if (currentFormUrl === previousFormUrl && this.isExamStarted) {
-          console.log('[ExamLockdown] Multi-section navigation detected, showing section overlay');
+          console.log('[ExamLockdown] Multi-section navigation detected, re-establishing monitoring');
           
           // Show an overlay to indicate section change and maintain monitoring
           this.showSectionChangeOverlay();
           
           // Re-attach all listeners for new DOM content
+          console.log('[ExamLockdown] Re-attaching form submission listeners');
           this.setupFormSubmissionListeners();
+          
+          console.log('[ExamLockdown] Re-attaching fullscreen listener');
           this.setupFullscreenListener();
           
-          // Don't force fullscreen automatically - let user handle it
-          // The fullscreen listener will handle violations if fullscreen is lost
-          
           // Restart monitoring if needed
+          console.log('[ExamLockdown] Restarting monitoring systems');
           this.restartMonitoring();
+          
+          // Ensure violation detection is active
+          if (!this.violationClearCheckInterval) {
+            console.log('[ExamLockdown] Starting violation clear check');
+            this.startViolationClearCheck();
+          }
           
           return;
         }
         
         // Otherwise, treat as new form initialization
+        console.log('[ExamLockdown] New form detected, initializing exam');
         this.initializeExam();
       }
     } catch (error) {
@@ -289,6 +303,30 @@ class ExamLockdown {
         this.fullscreenMonitorInterval = null;
       }
     }, 500);
+  }
+
+  startPeriodicUrlCheck() {
+    // Clear any existing periodic check
+    if (this.periodicUrlCheckInterval) {
+      clearInterval(this.periodicUrlCheckInterval);
+    }
+    
+    // Check URL every 2 seconds when exam is active
+    this.periodicUrlCheckInterval = setInterval(() => {
+      if (this.isExamStarted && !this.examSubmitted) {
+        const currentUrl = this.getCurrentFormUrl();
+        const currentFullUrl = window.location.href;
+        
+        // Check if the full URL changed (including query params)
+        if (currentFullUrl !== this.lastKnownUrl) {
+          console.log('[ExamLockdown] Periodic URL change detected:', currentFullUrl);
+          this.lastKnownUrl = currentFullUrl;
+          
+          // Always handle URL change during exam to re-establish monitoring
+          this.handleUrlChange();
+        }
+      }
+    }, 2000);
   }
 
   showSectionChangeOverlay() {
@@ -2001,6 +2039,14 @@ class ExamLockdown {
       if (this.violationClearCheckInterval) {
         clearInterval(this.violationClearCheckInterval);
         this.violationClearCheckInterval = null;
+      }
+      if (this.fullscreenMonitorInterval) {
+        clearInterval(this.fullscreenMonitorInterval);
+        this.fullscreenMonitorInterval = null;
+      }
+      if (this.periodicUrlCheckInterval) {
+        clearInterval(this.periodicUrlCheckInterval);
+        this.periodicUrlCheckInterval = null;
       }
       if (this.submissionExpiryTimerId) {
         clearInterval(this.submissionExpiryTimerId);
