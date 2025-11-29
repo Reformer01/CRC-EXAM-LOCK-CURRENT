@@ -434,6 +434,12 @@ class ExamLockdown {
 
       const overlay = document.createElement('div');
       overlay.className = 'exam-overlay';
+      
+      // Check if fullscreen is active
+      const isFullscreen = document.fullscreenElement !== null;
+      const fullscreenStatus = isFullscreen ? 'Active' : 'Lost - Please re-enter fullscreen';
+      const fullscreenClass = isFullscreen ? 'success' : 'warning';
+      
       overlay.innerHTML = `
         <div class="exam-overlay-content lockout-content">
           <div class="exam-icon">
@@ -443,12 +449,24 @@ class ExamLockdown {
           </div>
           <h2>Section Changed</h2>
           <p>You've moved to a new section of the exam.</p>
-          <p>Exam monitoring and fullscreen mode are being maintained.</p>
+          <p>Exam monitoring is being maintained.</p>
+          
           <div class="exam-info">
             <p><strong>Student:</strong> ${this.studentName}</p>
             <p><strong>Violations:</strong> ${this.violationCount}</p>
             <p><strong>Status:</strong> Exam in progress</p>
+            <p class="${fullscreenClass}"><strong>Fullscreen:</strong> ${fullscreenStatus}</p>
           </div>
+          
+          ${!isFullscreen ? `
+            <div class="fullscreen-prompt">
+              <p class="warning-text">⚠️ Fullscreen mode is required!</p>
+              <button class="exam-button primary" onclick="document.documentElement.requestFullscreen(); this.closest('.exam-overlay').remove();">
+                Enter Fullscreen
+              </button>
+            </div>
+          ` : ''}
+          
           <button class="exam-button" onclick="this.closest('.exam-overlay').remove()">Continue</button>
         </div>
       `;
@@ -456,13 +474,18 @@ class ExamLockdown {
       document.body.appendChild(overlay);
       this.currentOverlay = overlay;
 
-      // Auto-remove after 3 seconds
-      setTimeout(() => {
-        if (overlay.parentElement) {
-          overlay.remove();
-          this.currentOverlay = null;
-        }
-      }, 3000);
+      // Only auto-remove if fullscreen is active, otherwise keep it visible
+      if (isFullscreen) {
+        setTimeout(() => {
+          if (overlay.parentElement) {
+            overlay.remove();
+            this.currentOverlay = null;
+          }
+        }, 3000);
+      } else {
+        // Don't auto-remove if fullscreen is lost - user must take action
+        console.log('[ExamLockdown] Fullscreen lost, keeping overlay visible until user takes action');
+      }
 
     } catch (error) {
       console.error('Error showing section change overlay:', error);
