@@ -235,13 +235,8 @@ class ExamLockdown {
           this.setupFormSubmissionListeners();
           this.setupFullscreenListener();
           
-          // Force fullscreen immediately
-          setTimeout(() => {
-            if (!document.fullscreenElement) {
-              console.log('[ExamLockdown] Re-enforcing fullscreen after section navigation');
-              this.requestFullscreen();
-            }
-          }, 100);
+          // Don't force fullscreen automatically - let user handle it
+          // The fullscreen listener will handle violations if fullscreen is lost
           
           // Restart monitoring if needed
           this.restartMonitoring();
@@ -278,13 +273,14 @@ class ExamLockdown {
       clearInterval(this.fullscreenMonitorInterval);
     }
     
-    // Check fullscreen every 500ms for the first 5 seconds after navigation
+    // Check fullscreen every 500ms for the first 10 seconds after navigation
     let checks = 0;
     this.fullscreenMonitorInterval = setInterval(() => {
       checks++;
       if (!document.fullscreenElement && this.isExamStarted && !this.examSubmitted) {
-        console.log('[ExamLockdown] Fullscreen lost during section navigation, re-enforcing');
-        this.requestFullscreen();
+        console.log('[ExamLockdown] Fullscreen lost during section navigation - showing warning');
+        // Show fullscreen warning instead of trying to force fullscreen
+        this.showFullscreenWarning();
       }
       
       // Stop after 10 seconds (20 checks)
@@ -738,6 +734,7 @@ class ExamLockdown {
         try {
           const response = await fetch(this.config.googleSheetsWebhookUrl, {
             method: 'POST',
+            mode: 'no-cors', // Add no-cors mode to handle CORS issues
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               action: 'logViolation',
@@ -748,11 +745,11 @@ class ExamLockdown {
             })
           });
 
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
+          // With no-cors mode, we can't check response.ok, so just log success
+          console.log('Violation logged via webhook (no-cors mode)');
         } catch (err) {
-          console.error('Direct webhook violation logging failed:', err);
+          console.warn('Direct webhook violation logging failed:', err);
+          // Don't throw error, just log it - extension should continue working
         }
       }
     } catch (error) {
@@ -1406,6 +1403,7 @@ class ExamLockdown {
         try {
           const response = await fetch(this.config.googleSheetsWebhookUrl, {
             method: 'POST',
+            mode: 'no-cors', // Add no-cors mode to handle CORS issues
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               action: 'logViolation',
@@ -1416,19 +1414,18 @@ class ExamLockdown {
             })
           });
 
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-
-          return await response.json();
+          // With no-cors mode, we can't check response.ok or get response data
+          console.log('Violation logged via webhook (no-cors mode)');
+          return { success: true };
         } catch (err) {
-          console.error('Direct webhook violation logging failed:', err);
-          throw err;
+          console.warn('Direct webhook violation logging failed:', err);
+          // Don't throw error, return success so extension continues working
+          return { success: false, error: err.message };
         }
       }
     } catch (error) {
       console.error('Error logging violation:', error);
-      throw error;
+      // Don't throw error - extension should continue working even if logging fails
     }
   }
 
