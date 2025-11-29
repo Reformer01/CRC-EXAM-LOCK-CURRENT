@@ -435,6 +435,28 @@ p {
   font-size: 18px;
 }
 
+.exam-info {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 24px 0;
+  text-align: left;
+}
+
+.exam-info p {
+  margin: 8px 0;
+  color: #c7d2fe;
+  font-size: 16px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.exam-info strong {
+  color: #6366f1;
+  font-weight: 600;
+}
+
 .auto-submit-status {
   margin: 32px 0;
   display: flex;

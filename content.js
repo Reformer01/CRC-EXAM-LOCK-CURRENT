@@ -226,7 +226,10 @@ class ExamLockdown {
         
         // If the base form URL is the same, this is just section navigation
         if (currentFormUrl === previousFormUrl && this.isExamStarted) {
-          console.log('[ExamLockdown] Multi-section navigation detected, maintaining exam state');
+          console.log('[ExamLockdown] Multi-section navigation detected, showing section overlay');
+          
+          // Show an overlay to indicate section change and maintain monitoring
+          this.showSectionChangeOverlay();
           
           // Re-attach all listeners for new DOM content
           this.setupFormSubmissionListeners();
@@ -256,15 +259,7 @@ class ExamLockdown {
 
   restartMonitoring() {
     try {
-      // Restart heartbeat monitoring
-      this.clearHeartbeat();
-      this.startHeartbeat();
-      
-      // Restart integrity checks
-      this.clearIntegrityCheck();
-      this.startIntegrityCheck();
-      
-      // Restart violation clear checks
+      // Restart violation clear checks (this method exists)
       this.clearViolationClearCheck();
       this.startViolationClearCheck();
       
@@ -298,6 +293,47 @@ class ExamLockdown {
         this.fullscreenMonitorInterval = null;
       }
     }, 500);
+  }
+
+  showSectionChangeOverlay() {
+    try {
+      if (this.currentOverlay) return; // Don't show if overlay already exists
+
+      const overlay = document.createElement('div');
+      overlay.className = 'exam-overlay';
+      overlay.innerHTML = `
+        <div class="exam-overlay-content lockout-content">
+          <div class="exam-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </div>
+          <h2>Section Changed</h2>
+          <p>You've moved to a new section of the exam.</p>
+          <p>Exam monitoring and fullscreen mode are being maintained.</p>
+          <div class="exam-info">
+            <p><strong>Student:</strong> ${this.studentName}</p>
+            <p><strong>Violations:</strong> ${this.violationCount}</p>
+            <p><strong>Status:</strong> Exam in progress</p>
+          </div>
+          <button class="exam-button" onclick="this.closest('.exam-overlay').remove()">Continue</button>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+      this.currentOverlay = overlay;
+
+      // Auto-remove after 3 seconds
+      setTimeout(() => {
+        if (overlay.parentElement) {
+          overlay.remove();
+          this.currentOverlay = null;
+        }
+      }, 3000);
+
+    } catch (error) {
+      console.error('Error showing section change overlay:', error);
+    }
   }
 
   async getStorage(keys, fallback = null) {
