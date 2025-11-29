@@ -64,6 +64,7 @@ class ExamLockdown {
       this.runtimeInvalidatedLogged = false;
       this.identityWarningLogged = false;
       this.lastKnownUrl = window.location.href;
+      this.lastFormUrl = '';
       this.examSubmitted = false;
       this.isReturningToFullscreen = false;
       this.initialized = false;
@@ -184,6 +185,23 @@ class ExamLockdown {
   handleUrlChange() {
     try {
       if (this.initialized && !this.runtimeInvalidated) {
+        // Check if this is the same form (multi-section navigation)
+        const currentFormUrl = this.getCurrentFormUrl();
+        const previousFormUrl = this.lastFormUrl || '';
+        
+        // If the base form URL is the same, this is just section navigation
+        if (currentFormUrl === previousFormUrl && this.isExamStarted) {
+          console.log('[ExamLockdown] Multi-section navigation detected, maintaining exam state');
+          // Re-attach listeners for new DOM content
+          this.setupFormSubmissionListeners();
+          // Ensure fullscreen is maintained
+          if (!document.fullscreenElement) {
+            this.requestFullscreen();
+          }
+          return;
+        }
+        
+        // Otherwise, treat as new form initialization
         this.initialize();
       }
     } catch (error) {
@@ -379,7 +397,10 @@ class ExamLockdown {
   getCurrentFormUrl() {
     const url = window.location.href;
     const urlObj = new URL(url);
-    return urlObj.pathname;
+    // Remove query parameters for multi-section forms to treat them as the same form
+    const pathname = urlObj.pathname;
+    const baseUrl = pathname.replace(/\/page\/\d+$/, ''); // Remove /page/N from URLs
+    return baseUrl;
   }
 
   async isFormUrlSubmitted(formUrl) {
@@ -943,6 +964,7 @@ class ExamLockdown {
 
       this.isExamStarted = true;
       this.examStartTime = Date.now();
+      this.lastFormUrl = this.getCurrentFormUrl(); // Track form URL for multi-section detection
       
       this.removeCurrentOverlay();
       this.showNotification(`Exam started for ${this.studentName}. Exam mode is now active.`, 'success');
@@ -1669,6 +1691,7 @@ class ExamLockdown {
 
       this.isExamStarted = true;
       this.examStartTime = Date.now();
+      this.lastFormUrl = this.getCurrentFormUrl(); // Track form URL for multi-section detection
       
       this.removeCurrentOverlay();
       this.showNotification(`Exam started for ${this.studentName}. Exam mode is now active.`, 'success');
@@ -1708,6 +1731,15 @@ class ExamLockdown {
       this.fullscreenListener = handleFullscreenChange;
     } catch (error) {
       console.error('Error setting up fullscreen listener:', error);
+    }
+  }
+
+  async requestFullscreen() {
+    try {
+      await document.documentElement.requestFullscreen();
+    } catch (error) {
+      console.error('Error requesting fullscreen:', error);
+      this.showNotification('Failed to enter fullscreen. Please try again.', 'error');
     }
   }
 
@@ -1809,10 +1841,16 @@ class ExamLockdown {
           }, true);
 
           form.addEventListener('click', (e) => {
-            const submitButton = e.target.closest('button[type="submit"], div[role="button"][aria-label*="Submit"]');
+            const submitButton = e.target.closest('button[type="submit"], div[role="button"][aria-label*="Submit"], div[role="button"][data-tooltip*="Submit"], span[data-tooltip*="Submit"]');
+            const nextButton = e.target.closest('div[role="button"][aria-label*="Next"], div[role="button"][data-tooltip*="Next"], span[data-tooltip*="Next"]');
+            
             if (submitButton) {
               this.submissionInProgress = true;
               setTimeout(() => { this.submissionInProgress = false; }, 5000);
+            } else if (nextButton) {
+              // Handle Next button clicks for multi-section forms
+              console.log('[ExamLockdown] Next button clicked, maintaining exam state');
+              // Don't set submissionInProgress for navigation buttons
             }
           }, true);
         }
