@@ -170,6 +170,7 @@ class ExamLockdown {
       this.setupFullscreenListener();
       this.setupFormSubmissionListeners();
       this.setupUrlChangeListener();
+      this.setupViolationListeners(); // Add violation detection
       this.initialized = true;
     } catch (error) {
       console.error('Error setting up event listeners:', error);
@@ -210,6 +211,100 @@ class ExamLockdown {
       
     } catch (error) {
       console.error('Error setting up URL change listener:', error);
+    }
+  }
+
+  setupViolationListeners() {
+    try {
+      // Visibility change detection (tab switching)
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && this.isExamStarted && !this.examSubmitted) {
+          this.handleViolation('visibilitychange');
+        }
+      });
+
+      // Window focus/blur detection
+      window.addEventListener('blur', () => {
+        if (this.isExamStarted && !this.examSubmitted) {
+          this.handleViolation('window-blur');
+        }
+      });
+
+      window.addEventListener('focus', () => {
+        // Log when focus returns (for debugging)
+        if (this.isExamStarted) {
+          console.log('[ExamLockdown] Window focus regained');
+        }
+      });
+
+      // Keyboard shortcuts detection
+      document.addEventListener('keydown', (e) => {
+        if (!this.isExamStarted || this.examSubmitted) return;
+        
+        // Detect common forbidden shortcuts
+        const forbiddenKeys = [
+          { ctrl: true, key: 'c', desc: 'copy' },
+          { ctrl: true, key: 'v', desc: 'paste' },
+          { ctrl: true, key: 'x', desc: 'cut' },
+          { ctrl: true, shift: true, key: 'i', desc: 'devtools' },
+          { ctrl: true, shift: true, key: 'j', desc: 'devtools' },
+          { ctrl: true, shift: true, key: 'c', desc: 'devtools' },
+          { key: 'F12', desc: 'devtools' },
+          { ctrl: true, key: 'u', desc: 'view-source' }
+        ];
+
+        const isForbidden = forbiddenKeys.some(shortcut => {
+          if (shortcut.ctrl && !e.ctrlKey) return false;
+          if (shortcut.shift && !e.shiftKey) return false;
+          if (shortcut.key === e.key) return true;
+          return false;
+        });
+
+        if (isForbidden) {
+          e.preventDefault();
+          this.handleViolation('keyboard');
+        }
+      });
+
+      // Mouse movement detection (outside window)
+      document.addEventListener('mouseleave', () => {
+        if (this.isExamStarted && !this.examSubmitted) {
+          this.handleViolation('mouse');
+        }
+      });
+
+      // Clipboard detection
+      document.addEventListener('copy', (e) => {
+        if (this.isExamStarted && !this.examSubmitted) {
+          e.preventDefault();
+          this.handleViolation('clipboard');
+        }
+      });
+
+      document.addEventListener('paste', (e) => {
+        if (this.isExamStarted && !this.examSubmitted) {
+          e.preventDefault();
+          this.handleViolation('clipboard');
+        }
+      });
+
+      // Devtools detection
+      const devtoolsDetector = () => {
+        if (this.isExamStarted && !this.examSubmitted) {
+          const threshold = 160;
+          if (window.outerHeight - window.innerHeight > threshold || 
+              window.outerWidth - window.innerWidth > threshold) {
+            this.handleViolation('devtools');
+          }
+        }
+      };
+
+      window.addEventListener('resize', devtoolsDetector);
+      this.eventListeners.push(() => window.removeEventListener('resize', devtoolsDetector));
+
+      console.log('[ExamLockdown] Violation detection listeners set up');
+    } catch (error) {
+      console.error('Error setting up violation listeners:', error);
     }
   }
 
@@ -271,6 +366,10 @@ class ExamLockdown {
       // Restart violation clear checks (this method exists)
       this.clearViolationClearCheck();
       this.startViolationClearCheck();
+      
+      // Re-attach violation listeners for new DOM content
+      console.log('[ExamLockdown] Re-attaching violation listeners');
+      this.setupViolationListeners();
       
       // Start aggressive fullscreen monitoring for multi-section forms
       this.startFullscreenMonitoring();
