@@ -58,6 +58,7 @@ class ExamLockdown {
       this.heartbeatInterval = null;
       this.integrityCheckInterval = null;
       this.violationClearCheckInterval = null;
+      this.fullscreenMonitorInterval = null;
       this.storageArea = null;
       this.storageUnavailable = false;
       this.runtimeInvalidated = false;
@@ -65,6 +66,7 @@ class ExamLockdown {
       this.identityWarningLogged = false;
       this.lastKnownUrl = window.location.href;
       this.lastFormUrl = '';
+      this.lastDetectedUrl = '';
       this.examSubmitted = false;
       this.isReturningToFullscreen = false;
       this.initialized = false;
@@ -179,6 +181,34 @@ class ExamLockdown {
       window.addEventListener('examlockdown:urlchange', () => {
         this.handleUrlChange();
       });
+      
+      // Also monitor DOM changes that might indicate section navigation
+      const observer = new MutationObserver((mutations) => {
+        const urlChanged = mutations.some(mutation => 
+          mutation.type === 'childList' && 
+          mutation.target === document.body
+        );
+        
+        if (urlChanged && this.isExamStarted) {
+          // Check if URL actually changed
+          const currentUrl = this.getCurrentFormUrl();
+          if (currentUrl !== this.lastDetectedUrl) {
+            console.log('[ExamLockdown] DOM-based URL change detected');
+            this.lastDetectedUrl = currentUrl;
+            this.handleUrlChange();
+          }
+        }
+      });
+      
+      observer.observe(document.body, { 
+        childList: true, 
+        subtree: true,
+        attributes: false,
+        characterData: false
+      });
+      
+      this.eventListeners.push(() => observer.disconnect());
+      
     } catch (error) {
       console.error('Error setting up URL change listener:', error);
     }
@@ -191,15 +221,28 @@ class ExamLockdown {
         const currentFormUrl = this.getCurrentFormUrl();
         const previousFormUrl = this.lastFormUrl || '';
         
+        // Update last detected URL
+        this.lastDetectedUrl = currentFormUrl;
+        
         // If the base form URL is the same, this is just section navigation
         if (currentFormUrl === previousFormUrl && this.isExamStarted) {
           console.log('[ExamLockdown] Multi-section navigation detected, maintaining exam state');
-          // Re-attach listeners for new DOM content
+          
+          // Re-attach all listeners for new DOM content
           this.setupFormSubmissionListeners();
-          // Ensure fullscreen is maintained
-          if (!document.fullscreenElement) {
-            this.requestFullscreen();
-          }
+          this.setupFullscreenListener();
+          
+          // Force fullscreen immediately
+          setTimeout(() => {
+            if (!document.fullscreenElement) {
+              console.log('[ExamLockdown] Re-enforcing fullscreen after section navigation');
+              this.requestFullscreen();
+            }
+          }, 100);
+          
+          // Restart monitoring if needed
+          this.restartMonitoring();
+          
           return;
         }
         
@@ -209,6 +252,52 @@ class ExamLockdown {
     } catch (error) {
       console.error('Error handling URL change:', error);
     }
+  }
+
+  restartMonitoring() {
+    try {
+      // Restart heartbeat monitoring
+      this.clearHeartbeat();
+      this.startHeartbeat();
+      
+      // Restart integrity checks
+      this.clearIntegrityCheck();
+      this.startIntegrityCheck();
+      
+      // Restart violation clear checks
+      this.clearViolationClearCheck();
+      this.startViolationClearCheck();
+      
+      // Start aggressive fullscreen monitoring for multi-section forms
+      this.startFullscreenMonitoring();
+      
+      console.log('[ExamLockdown] Monitoring restarted after section navigation');
+    } catch (error) {
+      console.error('Error restarting monitoring:', error);
+    }
+  }
+
+  startFullscreenMonitoring() {
+    // Clear any existing fullscreen monitoring
+    if (this.fullscreenMonitorInterval) {
+      clearInterval(this.fullscreenMonitorInterval);
+    }
+    
+    // Check fullscreen every 500ms for the first 5 seconds after navigation
+    let checks = 0;
+    this.fullscreenMonitorInterval = setInterval(() => {
+      checks++;
+      if (!document.fullscreenElement && this.isExamStarted && !this.examSubmitted) {
+        console.log('[ExamLockdown] Fullscreen lost during section navigation, re-enforcing');
+        this.requestFullscreen();
+      }
+      
+      // Stop after 10 seconds (20 checks)
+      if (checks >= 20) {
+        clearInterval(this.fullscreenMonitorInterval);
+        this.fullscreenMonitorInterval = null;
+      }
+    }, 500);
   }
 
   async getStorage(keys, fallback = null) {
@@ -400,9 +489,13 @@ class ExamLockdown {
     const url = window.location.href;
     const urlObj = new URL(url);
     // Remove query parameters for multi-section forms to treat them as the same form
-    const pathname = urlObj.pathname;
+    let pathname = urlObj.pathname;
     const baseUrl = pathname.replace(/\/page\/\d+$/, ''); // Remove /page/N from URLs
-    return baseUrl;
+    
+    // Also remove any hash fragments that might indicate sections
+    const cleanUrl = baseUrl.replace(/#.*$/, '');
+    
+    return cleanUrl;
   }
 
   async isFormUrlSubmitted(formUrl) {
