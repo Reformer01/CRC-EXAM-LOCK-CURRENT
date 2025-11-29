@@ -140,10 +140,12 @@ class ExamLockdown {
 
   initialize() {
     try {
-      setTimeout(() => {
+      setTimeout(async () => {
         this.initComponents();
         this.setupEventListeners();
         this.initialized = true;
+        // Initialize exam after basic setup is complete
+        await this.initializeExam();
       }, 100);
     } catch (error) {
       console.error('Error during initialization:', error);
@@ -202,7 +204,7 @@ class ExamLockdown {
         }
         
         // Otherwise, treat as new form initialization
-        this.initialize();
+        this.initializeExam();
       }
     } catch (error) {
       console.error('Error handling URL change:', error);
