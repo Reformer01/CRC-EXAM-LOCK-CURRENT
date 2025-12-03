@@ -40,6 +40,7 @@ const DEFAULT_SUPPRESSED_QUEUE_LIMIT = 100;
 class ExamLockdown {
   constructor() {
     try {
+      console.log('ExamLockdown: Constructor called');
       this.violationCount = 0;
       this.studentName = '';
       this.isExamStarted = false;
@@ -2200,10 +2201,15 @@ function areChromeApisAvailable() {
 
 function initExamLockdown() {
   try {
+    console.log('ExamLockdown: Starting initialization...');
+    console.log('ExamLockdown: Current URL:', window.location.href);
+    
     if (!areChromeApisAvailable()) {
       console.error('Exam Lockdown: Required Chrome extension APIs are not available');
       return;
     }
+
+    console.log('ExamLockdown: Chrome APIs available, proceeding...');
 
     const init = async () => {
       try {
@@ -2212,6 +2218,8 @@ function initExamLockdown() {
         if (typeof window !== 'undefined') {
           window.ExamLockdown = lockdown;
         }
+
+        console.log('ExamLockdown: Instance created, waiting for initialization...');
 
         const start = Date.now();
         while (!lockdown.initialized && !lockdown.initializationError && Date.now() - start < 10000) {
