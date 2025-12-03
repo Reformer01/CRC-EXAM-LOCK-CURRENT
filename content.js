@@ -58,8 +58,6 @@ class ExamLockdown {
       this.heartbeatInterval = null;
       this.integrityCheckInterval = null;
       this.violationClearCheckInterval = null;
-      this.fullscreenMonitorInterval = null;
-      this.periodicUrlCheckInterval = null;
       this.storageArea = null;
       this.storageUnavailable = false;
       this.runtimeInvalidated = false;
@@ -67,7 +65,6 @@ class ExamLockdown {
       this.identityWarningLogged = false;
       this.lastKnownUrl = window.location.href;
       this.lastFormUrl = '';
-      this.lastDetectedUrl = '';
       this.examSubmitted = false;
       this.isReturningToFullscreen = false;
       this.initialized = false;
@@ -170,7 +167,7 @@ class ExamLockdown {
       this.setupFullscreenListener();
       this.setupFormSubmissionListeners();
       this.setupUrlChangeListener();
-      this.setupViolationListeners(); // Add violation detection
+      this.setupKeyboardProtection();
       this.initialized = true;
     } catch (error) {
       console.error('Error setting up event listeners:', error);
@@ -183,224 +180,8 @@ class ExamLockdown {
       window.addEventListener('examlockdown:urlchange', () => {
         this.handleUrlChange();
       });
-      
-      // Also monitor DOM changes that might indicate section navigation
-      const observer = new MutationObserver((mutations) => {
-        if (this.isExamStarted) {
-          // Check if URL actually changed
-          const currentUrl = this.getCurrentFormUrl();
-          if (currentUrl !== this.lastDetectedUrl) {
-            console.log('[ExamLockdown] DOM-based URL change detected:', currentUrl);
-            this.lastDetectedUrl = currentUrl;
-            this.handleUrlChange();
-          }
-        }
-      });
-      
-      observer.observe(document.body, { 
-        childList: true, 
-        subtree: true,
-        attributes: false,
-        characterData: false
-      });
-      
-      this.eventListeners.push(() => observer.disconnect());
-      
-      // Add periodic URL checking as fallback for Google Forms
-      this.startPeriodicUrlCheck();
-      
     } catch (error) {
       console.error('Error setting up URL change listener:', error);
-    }
-  }
-
-  setupViolationListeners() {
-    try {
-      // Visibility change detection (tab switching)
-      document.addEventListener('visibilitychange', () => {
-        if (document.hidden && this.isExamStarted && !this.examSubmitted) {
-          this.handleViolation('visibilitychange');
-        }
-      });
-
-      // Window focus/blur detection
-      window.addEventListener('blur', () => {
-        if (this.isExamStarted && !this.examSubmitted) {
-          this.handleViolation('window-blur');
-        }
-      });
-
-      window.addEventListener('focus', () => {
-        // Log when focus returns (for debugging)
-        if (this.isExamStarted) {
-          console.log('[ExamLockdown] Window focus regained');
-        }
-      });
-
-      // Keyboard shortcuts detection
-      document.addEventListener('keydown', (e) => {
-        if (!this.isExamStarted || this.examSubmitted) return;
-        
-        // Detect common forbidden shortcuts
-        const forbiddenKeys = [
-          // Basic shortcuts
-          { ctrl: true, key: 'c', desc: 'copy' },
-          { ctrl: true, key: 'v', desc: 'paste' },
-          { ctrl: true, key: 'x', desc: 'cut' },
-          { ctrl: true, key: 'u', desc: 'view-source' },
-          
-          // DevTools shortcuts
-          { ctrl: true, shift: true, key: 'i', desc: 'devtools' },
-          { ctrl: true, shift: true, key: 'j', desc: 'devtools' },
-          { ctrl: true, shift: true, key: 'c', desc: 'devtools' },
-          { key: 'F12', desc: 'devtools' },
-          
-          // Tab switching and window management
-          { ctrl: true, key: 'Tab', desc: 'tab-switch' },
-          { ctrl: true, key: 'PageUp', desc: 'tab-switch' },
-          { ctrl: true, key: 'PageDown', desc: 'tab-switch' },
-          { ctrl: true, key: '1', desc: 'tab-switch' },
-          { ctrl: true, key: '2', desc: 'tab-switch' },
-          { ctrl: true, key: '3', desc: 'tab-switch' },
-          { ctrl: true, key: '4', desc: 'tab-switch' },
-          { ctrl: true, key: '5', desc: 'tab-switch' },
-          { ctrl: true, key: '6', desc: 'tab-switch' },
-          { ctrl: true, key: '7', desc: 'tab-switch' },
-          { ctrl: true, key: '8', desc: 'tab-switch' },
-          { ctrl: true, key: '9', desc: 'tab-switch' },
-          { ctrl: true, key: '0', desc: 'tab-switch' },
-          
-          // Alt+Tab combinations (window switching)
-          { alt: true, key: 'Tab', desc: 'window-switch' },
-          { alt: true, key: 'Escape', desc: 'window-switch' },
-          { alt: true, key: 'F4', desc: 'window-close' },
-          
-          // Windows key combinations
-          { meta: true, key: 'Tab', desc: 'window-switch' },
-          { meta: true, key: 'Escape', desc: 'window-switch' },
-          { meta: true, shift: true, key: 'Tab', desc: 'window-switch' },
-          { meta: true, key: 'ArrowLeft', desc: 'window-switch' },
-          { meta: true, key: 'ArrowRight', desc: 'window-switch' },
-          { meta: true, key: 'ArrowUp', desc: 'window-switch' },
-          { meta: true, key: 'ArrowDown', desc: 'window-switch' },
-          
-          // Task Manager and System shortcuts
-          { ctrl: true, shift: true, key: 'Escape', desc: 'task-manager' },
-          { ctrl: true, alt: true, key: 'Delete', desc: 'task-manager' },
-          { meta: true, shift: true, key: 'Escape', desc: 'task-manager' },
-          
-          // Function keys that might open system tools
-          { key: 'F1', desc: 'help' },
-          { key: 'F3', desc: 'search' },
-          { key: 'F5', desc: 'refresh' },
-          { key: 'F6', desc: 'address-bar' },
-          { key: 'F7', desc: 'caret-browsing' },
-          { key: 'F10', desc: 'menu' },
-          { key: 'F11', desc: 'fullscreen-toggle' },
-          
-          // Browser-specific shortcuts
-          { ctrl: true, key: 'h', desc: 'history' },
-          { ctrl: true, key: 'j', desc: 'downloads' },
-          { ctrl: true, key: 'l', desc: 'address-bar' },
-          { ctrl: true, key: 'n', desc: 'new-window' },
-          { ctrl: true, key: 't', desc: 'new-tab' },
-          { ctrl: true, key: 'w', desc: 'close-tab' },
-          { ctrl: true, key: 'q', desc: 'quit' },
-          { ctrl: true, shift: true, key: 't', desc: 'new-tab' },
-          { ctrl: true, shift: true, key: 'n', desc: 'new-window' },
-          { ctrl: true, shift: true, key: 'w', desc: 'close-window' },
-          
-          // Alt key combinations
-          { alt: true, key: 'ArrowLeft', desc: 'back' },
-          { alt: true, key: 'ArrowRight', desc: 'forward' },
-          { alt: true, key: 'ArrowUp', desc: 'scroll-up' },
-          { alt: true, key: 'ArrowDown', desc: 'scroll-down' },
-          { alt: true, key: 'Home', desc: 'home' },
-          
-          // Shift+Alt combinations
-          { shift: true, alt: true, key: 'Tab', desc: 'window-switch' },
-          { shift: true, alt: true, key: 'Escape', desc: 'window-switch' }
-        ];
-
-        const isForbidden = forbiddenKeys.some(shortcut => {
-          if (shortcut.ctrl && !e.ctrlKey) return false;
-          if (shortcut.shift && !e.shiftKey) return false;
-          if (shortcut.alt && !e.altKey) return false;
-          if (shortcut.meta && !e.metaKey) return false; // meta is Windows/Cmd key
-          if (shortcut.key === e.key) return true;
-          return false;
-        });
-
-        // Also block Tab key completely during exam (except in input fields)
-        const isTabKey = e.key === 'Tab';
-        const isInInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.contentEditable === 'true';
-        
-        if (isForbidden || (isTabKey && !isInInput)) {
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-          
-          // Log the specific violation type
-          const violationType = isTabKey ? 'tab-navigation' : 'keyboard';
-          console.log('[ExamLockdown] Blocked keyboard shortcut:', e.key, e.ctrlKey ? 'Ctrl' : '', e.altKey ? 'Alt' : '', e.shiftKey ? 'Shift' : '', e.metaKey ? 'Meta' : '');
-          
-          this.handleViolation(violationType);
-          
-          // Show immediate warning for serious violations
-          const matchedShortcut = forbiddenKeys.find(shortcut => {
-            if (shortcut.ctrl && !e.ctrlKey) return false;
-            if (shortcut.shift && !e.shiftKey) return false;
-            if (shortcut.alt && !e.altKey) return false;
-            if (shortcut.meta && !e.metaKey) return false;
-            if (shortcut.key === e.key) return true;
-            return false;
-          });
-          
-          if (matchedShortcut?.desc === 'window-switch' || matchedShortcut?.desc === 'task-manager' || isTabKey) {
-            this.showImmediateWarning('Window/tab switching is not allowed during exam!');
-          }
-        }
-      });
-
-      // Mouse movement detection (outside window)
-      document.addEventListener('mouseleave', () => {
-        if (this.isExamStarted && !this.examSubmitted) {
-          this.handleViolation('mouse');
-        }
-      });
-
-      // Clipboard detection
-      document.addEventListener('copy', (e) => {
-        if (this.isExamStarted && !this.examSubmitted) {
-          e.preventDefault();
-          this.handleViolation('clipboard');
-        }
-      });
-
-      document.addEventListener('paste', (e) => {
-        if (this.isExamStarted && !this.examSubmitted) {
-          e.preventDefault();
-          this.handleViolation('clipboard');
-        }
-      });
-
-      // Devtools detection
-      const devtoolsDetector = () => {
-        if (this.isExamStarted && !this.examSubmitted) {
-          const threshold = 160;
-          if (window.outerHeight - window.innerHeight > threshold || 
-              window.outerWidth - window.innerWidth > threshold) {
-            this.handleViolation('devtools');
-          }
-        }
-      };
-
-      window.addEventListener('resize', devtoolsDetector);
-      this.eventListeners.push(() => window.removeEventListener('resize', devtoolsDetector));
-
-      console.log('[ExamLockdown] Violation detection listeners set up');
-    } catch (error) {
-      console.error('Error setting up violation listeners:', error);
     }
   }
 
@@ -411,45 +192,19 @@ class ExamLockdown {
         const currentFormUrl = this.getCurrentFormUrl();
         const previousFormUrl = this.lastFormUrl || '';
         
-        // Update last detected URL
-        this.lastDetectedUrl = currentFormUrl;
-        
-        console.log('[ExamLockdown] URL change detected:', {
-          currentFormUrl,
-          previousFormUrl,
-          isExamStarted: this.isExamStarted,
-          examSubmitted: this.examSubmitted
-        });
-        
         // If the base form URL is the same, this is just section navigation
         if (currentFormUrl === previousFormUrl && this.isExamStarted) {
-          console.log('[ExamLockdown] Multi-section navigation detected, re-establishing monitoring');
-          
-          // Show an overlay to indicate section change and maintain monitoring
-          this.showSectionChangeOverlay();
-          
-          // Re-attach all listeners for new DOM content
-          console.log('[ExamLockdown] Re-attaching form submission listeners');
+          console.log('[ExamLockdown] Multi-section navigation detected, maintaining exam state');
+          // Re-attach listeners for new DOM content
           this.setupFormSubmissionListeners();
-          
-          console.log('[ExamLockdown] Re-attaching fullscreen listener');
-          this.setupFullscreenListener();
-          
-          // Restart monitoring if needed
-          console.log('[ExamLockdown] Restarting monitoring systems');
-          this.restartMonitoring();
-          
-          // Ensure violation detection is active
-          if (!this.violationClearCheckInterval) {
-            console.log('[ExamLockdown] Starting violation clear check');
-            this.startViolationClearCheck();
+          // Ensure fullscreen is maintained
+          if (!document.fullscreenElement) {
+            this.requestFullscreen();
           }
-          
           return;
         }
         
         // Otherwise, treat as new form initialization
-        console.log('[ExamLockdown] New form detected, initializing exam');
         this.initializeExam();
       }
     } catch (error) {
@@ -457,172 +212,188 @@ class ExamLockdown {
     }
   }
 
-  showImmediateWarning(message) {
+  setupKeyboardProtection() {
     try {
-      if (this.currentOverlay) return; // Don't show if overlay already exists
-
-      const overlay = document.createElement('div');
-      overlay.className = 'exam-overlay immediate-warning';
-      overlay.innerHTML = `
-        <div class="exam-overlay-content warning-content">
-          <div class="exam-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-          </div>
-          <h2>⚠️ Exam Violation Detected!</h2>
-          <p>${message}</p>
-          <p class="violation-count">Total Violations: ${this.violationCount}</p>
-          <button class="exam-button" onclick="this.closest('.exam-overlay').remove()">I Understand</button>
-        </div>
-      `;
-
-      document.body.appendChild(overlay);
-      this.currentOverlay = overlay;
-
-      // Auto-remove after 2 seconds
-      setTimeout(() => {
-        if (overlay.parentElement) {
-          overlay.remove();
-          this.currentOverlay = null;
-        }
-      }, 2000);
-
-    } catch (error) {
-      console.error('Error showing immediate warning:', error);
-    }
-  }
-
-  restartMonitoring() {
-    try {
-      // Restart violation clear checks (this method exists)
-      this.clearViolationClearCheck();
-      this.startViolationClearCheck();
-      
-      // Re-attach violation listeners for new DOM content
-      console.log('[ExamLockdown] Re-attaching violation listeners');
-      this.setupViolationListeners();
-      
-      // Start aggressive fullscreen monitoring for multi-section forms
-      this.startFullscreenMonitoring();
-      
-      console.log('[ExamLockdown] Monitoring restarted after section navigation');
-    } catch (error) {
-      console.error('Error restarting monitoring:', error);
-    }
-  }
-
-  startFullscreenMonitoring() {
-    // Clear any existing fullscreen monitoring
-    if (this.fullscreenMonitorInterval) {
-      clearInterval(this.fullscreenMonitorInterval);
-    }
-    
-    // Check fullscreen every 500ms for the first 10 seconds after navigation
-    let checks = 0;
-    this.fullscreenMonitorInterval = setInterval(() => {
-      checks++;
-      if (!document.fullscreenElement && this.isExamStarted && !this.examSubmitted) {
-        console.log('[ExamLockdown] Fullscreen lost during section navigation - showing warning');
-        // Show fullscreen warning instead of trying to force fullscreen
-        this.showFullscreenWarning();
-      }
-      
-      // Stop after 10 seconds (20 checks)
-      if (checks >= 20) {
-        clearInterval(this.fullscreenMonitorInterval);
-        this.fullscreenMonitorInterval = null;
-      }
-    }, 500);
-  }
-
-  startPeriodicUrlCheck() {
-    // Clear any existing periodic check
-    if (this.periodicUrlCheckInterval) {
-      clearInterval(this.periodicUrlCheckInterval);
-    }
-    
-    // Check URL every 2 seconds when exam is active
-    this.periodicUrlCheckInterval = setInterval(() => {
-      if (this.isExamStarted && !this.examSubmitted) {
-        const currentUrl = this.getCurrentFormUrl();
-        const currentFullUrl = window.location.href;
+      // Define dangerous keyboard shortcuts that could bypass lockdown
+      const dangerousShortcuts = [
+        // Tab switching
+        { ctrl: true, key: 'Tab', description: 'Ctrl+Tab' },
+        { ctrl: true, key: 'PageDown', description: 'Ctrl+PageDown' },
+        { ctrl: true, key: 'PageUp', description: 'Ctrl+PageUp' },
         
-        // Check if the full URL changed (including query params)
-        if (currentFullUrl !== this.lastKnownUrl) {
-          console.log('[ExamLockdown] Periodic URL change detected:', currentFullUrl);
-          this.lastKnownUrl = currentFullUrl;
-          
-          // Always handle URL change during exam to re-establish monitoring
-          this.handleUrlChange();
+        // Window switching
+        { alt: true, key: 'Tab', description: 'Alt+Tab' },
+        { meta: true, key: 'Tab', description: 'Cmd+Tab' },
+        
+        // New windows/tabs
+        { ctrl: true, key: 'n', description: 'Ctrl+N' },
+        { ctrl: true, key: 't', description: 'Ctrl+T' },
+        { meta: true, key: 'n', description: 'Cmd+N' },
+        { meta: true, key: 't', description: 'Cmd+T' },
+        
+        // History navigation
+        { alt: true, key: 'ArrowLeft', description: 'Alt+Left' },
+        { alt: true, key: 'ArrowRight', description: 'Alt+Right' },
+        { meta: true, key: '[', description: 'Cmd+[' },
+        { meta: true, key: ']', description: 'Cmd+]' },
+        
+        // Bookmark/developer tools
+        { ctrl: true, key: 'b', description: 'Ctrl+B' },
+        { ctrl: true, shift: true, key: 'i', description: 'Ctrl+Shift+I' },
+        { meta: true, alt: true, key: 'i', description: 'Cmd+Option+I' },
+        { f12: true, description: 'F12' },
+        
+        // Find/Search
+        { ctrl: true, key: 'f', description: 'Ctrl+F' },
+        { meta: true, key: 'f', description: 'Cmd+F' },
+        
+        // Print/Save
+        { ctrl: true, key: 'p', description: 'Ctrl+P' },
+        { meta: true, key: 'p', description: 'Cmd+P' },
+        { ctrl: true, key: 's', description: 'Ctrl+S' },
+        { meta: true, key: 's', description: 'Cmd+S' },
+        
+        // System shortcuts
+        { ctrl: true, shift: true, key: 'Escape', description: 'Ctrl+Shift+Esc' },
+        { ctrl: true, alt: true, key: 'Delete', description: 'Ctrl+Alt+Delete' },
+        { meta: true, alt: true, key: 'Escape', description: 'Cmd+Option+Esc' },
+        
+        // Windows/Meta key combinations
+        { meta: true, key: ' ', description: 'Win+Space' },
+        { meta: true, key: 'd', description: 'Win+D' },
+        { meta: true, key: 'e', description: 'Win+E' },
+        { meta: true, key: 'l', description: 'Win+L' },
+        { meta: true, key: 'r', description: 'Win+R' },
+        { meta: true, shift: true, key: 's', description: 'Win+Shift+S' },
+        
+        // Additional dangerous combinations
+        { ctrl: true, alt: true, key: 'Tab', description: 'Ctrl+Alt+Tab' },
+        { ctrl: true, shift: true, key: 'Tab', description: 'Ctrl+Shift+Tab' },
+        { alt: true, shift: true, key: 'Tab', description: 'Alt+Shift+Tab' }
+      ];
+
+      const keydownHandler = (e) => {
+        // Only enforce during active exam
+        if (!this.isExamStarted || this.examSubmitted) {
+          return;
         }
-      }
-    }, 2000);
-  }
 
-  showSectionChangeOverlay() {
-    try {
-      if (this.currentOverlay) return; // Don't show if overlay already exists
+        const key = e.key;
+        const keyCode = e.keyCode || e.which;
+        const ctrl = e.ctrlKey;
+        const alt = e.altKey;
+        const meta = e.metaKey; // Cmd key on Mac
+        const shift = e.shiftKey;
 
-      const overlay = document.createElement('div');
-      overlay.className = 'exam-overlay';
-      
-      // Check if fullscreen is active
-      const isFullscreen = document.fullscreenElement !== null;
-      const fullscreenStatus = isFullscreen ? 'Active' : 'Lost - Please re-enter fullscreen';
-      const fullscreenClass = isFullscreen ? 'success' : 'warning';
-      
-      overlay.innerHTML = `
-        <div class="exam-overlay-content lockout-content">
-          <div class="exam-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
-            </svg>
-          </div>
-          <h2>Section Changed</h2>
-          <p>You've moved to a new section of the exam.</p>
-          <p>Exam monitoring is being maintained.</p>
+        // Check for dangerous shortcuts
+        for (const shortcut of dangerousShortcuts) {
+          let match = false;
           
-          <div class="exam-info">
-            <p><strong>Student:</strong> ${this.studentName}</p>
-            <p><strong>Violations:</strong> ${this.violationCount}</p>
-            <p><strong>Status:</strong> Exam in progress</p>
-            <p class="${fullscreenClass}"><strong>Fullscreen:</strong> ${fullscreenStatus}</p>
-          </div>
-          
-          ${!isFullscreen ? `
-            <div class="fullscreen-prompt">
-              <p class="warning-text">⚠️ Fullscreen mode is required!</p>
-              <button class="exam-button primary" onclick="document.documentElement.requestFullscreen(); this.closest('.exam-overlay').remove();">
-                Enter Fullscreen
-              </button>
-            </div>
-          ` : ''}
-          
-          <button class="exam-button" onclick="this.closest('.exam-overlay').remove()">Continue</button>
-        </div>
-      `;
-
-      document.body.appendChild(overlay);
-      this.currentOverlay = overlay;
-
-      // Only auto-remove if fullscreen is active, otherwise keep it visible
-      if (isFullscreen) {
-        setTimeout(() => {
-          if (overlay.parentElement) {
-            overlay.remove();
-            this.currentOverlay = null;
+          if (shortcut.f12 && keyCode === 123) {
+            match = true;
+          } else if (shortcut.ctrl && ctrl && 
+                    (!shortcut.alt || alt) && 
+                    (!shortcut.meta || meta) && 
+                    (!shortcut.shift || shift) && 
+                    key.toLowerCase() === shortcut.key.toLowerCase()) {
+            match = true;
+          } else if (shortcut.alt && alt && 
+                    (!shortcut.ctrl || ctrl) && 
+                    (!shortcut.meta || meta) && 
+                    (!shortcut.shift || shift) && 
+                    key.toLowerCase() === shortcut.key.toLowerCase()) {
+            match = true;
+          } else if (shortcut.meta && meta && 
+                    (!shortcut.alt || alt) && 
+                    (!shortcut.ctrl || ctrl) && 
+                    (!shortcut.shift || shift) && 
+                    key.toLowerCase() === shortcut.key.toLowerCase()) {
+            match = true;
           }
-        }, 3000);
-      } else {
-        // Don't auto-remove if fullscreen is lost - user must take action
-        console.log('[ExamLockdown] Fullscreen lost, keeping overlay visible until user takes action');
-      }
+          
+          if (match) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            
+            console.log(`[ExamLockdown] Blocked dangerous shortcut: ${shortcut.description}`);
+            
+            // Log as keyboard violation
+            this.handleViolation('keyboard', {
+              shortcut: shortcut.description,
+              key: key,
+              ctrl: ctrl,
+              alt: alt,
+              meta: meta,
+              shift: shift
+            });
+            
+            return false;
+          }
+        }
 
+        // Additional protection: Block all F-keys except F11 (fullscreen)
+        if (keyCode >= 112 && keyCode <= 123 && keyCode !== 122) { // F1-F11, F13-F24 (except F11)
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          
+          console.log(`[ExamLockdown] Blocked F${keyCode - 111} key`);
+          
+          this.handleViolation('keyboard', {
+            blocked: `F${keyCode - 111}`,
+            type: 'function_key'
+          });
+          
+          return false;
+        }
+
+        // Block Escape key if it might be used to exit fullscreen
+        if (keyCode === 27 && document.fullscreenElement) { // Escape key
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          
+          console.log('[ExamLockdown] Blocked Escape key to prevent fullscreen exit');
+          
+          this.handleViolation('keyboard', {
+            blocked: 'Escape',
+            type: 'fullscreen_exit_attempt'
+          });
+          
+          return false;
+        }
+
+        // Block Windows/Meta key alone to prevent Start menu
+        if (meta && !ctrl && !alt && !shift) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          
+          console.log('[ExamLockdown] Blocked Windows/Meta key to prevent Start menu');
+          
+          this.handleViolation('keyboard', {
+            blocked: 'Windows/Meta',
+            type: 'system_key_attempt'
+          });
+          
+          return false;
+        }
+      };
+
+      // Add event listeners with capture phase to intercept early
+      document.addEventListener('keydown', keydownHandler, true);
+      document.addEventListener('keyup', keydownHandler, true);
+      
+      // Store cleanup function
+      this.eventListeners.push(() => {
+        document.removeEventListener('keydown', keydownHandler, true);
+        document.removeEventListener('keyup', keydownHandler, true);
+      });
+      
+      console.log('[ExamLockdown] Keyboard protection enabled');
     } catch (error) {
-      console.error('Error showing section change overlay:', error);
+      console.error('Error setting up keyboard protection:', error);
     }
   }
 
@@ -797,10 +568,7 @@ class ExamLockdown {
             'keyboard': 1500,
             'mouse': 1500,
             'clipboard': 1500,
-            'devtools': 1500,
-            'tab-navigation': 1000,
-            'window-switch': 500,
-            'task-manager': 500
+            'devtools': 1500
           }
         };
       }
@@ -818,13 +586,9 @@ class ExamLockdown {
     const url = window.location.href;
     const urlObj = new URL(url);
     // Remove query parameters for multi-section forms to treat them as the same form
-    let pathname = urlObj.pathname;
+    const pathname = urlObj.pathname;
     const baseUrl = pathname.replace(/\/page\/\d+$/, ''); // Remove /page/N from URLs
-    
-    // Also remove any hash fragments that might indicate sections
-    const cleanUrl = baseUrl.replace(/#.*$/, '');
-    
-    return cleanUrl;
+    return baseUrl;
   }
 
   async isFormUrlSubmitted(formUrl) {
@@ -1005,10 +769,7 @@ class ExamLockdown {
       'mouse': 'low',
       'clipboard': 'medium',
       'devtools': 'high',
-      'time_exceeded': 'high',
-      'tab-navigation': 'high',
-      'window-switch': 'critical',
-      'task-manager': 'critical'
+      'time_exceeded': 'high'
     };
     return severityMap[violationType] || 'medium';
   }
@@ -1034,7 +795,6 @@ class ExamLockdown {
         try {
           const response = await fetch(this.config.googleSheetsWebhookUrl, {
             method: 'POST',
-            mode: 'no-cors', // Add no-cors mode to handle CORS issues
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               action: 'logViolation',
@@ -1045,11 +805,11 @@ class ExamLockdown {
             })
           });
 
-          // With no-cors mode, we can't check response.ok, so just log success
-          console.log('Violation logged via webhook (no-cors mode)');
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
         } catch (err) {
-          console.warn('Direct webhook violation logging failed:', err);
-          // Don't throw error, just log it - extension should continue working
+          console.error('Direct webhook violation logging failed:', err);
         }
       }
     } catch (error) {
@@ -1065,10 +825,7 @@ class ExamLockdown {
         'keyboard': '⚠️ Warning: Suspicious keyboard activity detected!',
         'mouse': '⚠️ Warning: Mouse movement outside exam area detected!',
         'clipboard': '⚠️ Warning: Copy/paste attempt detected!',
-        'devtools': '🚨 CRITICAL: Developer tools opened!',
-        'tab-navigation': '🚨 CRITICAL: Tab navigation blocked!',
-        'window-switch': '🚨 CRITICAL: Window switching blocked!',
-        'task-manager': '🚨 CRITICAL: Task Manager access blocked!'
+        'devtools': '🚨 CRITICAL: Developer tools opened!'
       };
 
       const message = warningMessages[violationType] || '⚠️ Warning: Suspicious activity detected!';
@@ -1706,7 +1463,6 @@ class ExamLockdown {
         try {
           const response = await fetch(this.config.googleSheetsWebhookUrl, {
             method: 'POST',
-            mode: 'no-cors', // Add no-cors mode to handle CORS issues
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               action: 'logViolation',
@@ -1717,18 +1473,19 @@ class ExamLockdown {
             })
           });
 
-          // With no-cors mode, we can't check response.ok or get response data
-          console.log('Violation logged via webhook (no-cors mode)');
-          return { success: true };
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          return await response.json();
         } catch (err) {
-          console.warn('Direct webhook violation logging failed:', err);
-          // Don't throw error, return success so extension continues working
-          return { success: false, error: err.message };
+          console.error('Direct webhook violation logging failed:', err);
+          throw err;
         }
       }
     } catch (error) {
       console.error('Error logging violation:', error);
-      // Don't throw error - extension should continue working even if logging fails
+      throw error;
     }
   }
 
@@ -1782,10 +1539,7 @@ class ExamLockdown {
       'mouse': 'low',
       'clipboard': 'medium',
       'devtools': 'high',
-      'time_exceeded': 'high',
-      'tab-navigation': 'high',
-      'window-switch': 'critical',
-      'task-manager': 'critical'
+      'time_exceeded': 'high'
     };
     return severityMap[violationType] || 'medium';
   }
@@ -1798,10 +1552,7 @@ class ExamLockdown {
         'keyboard': '⚠️ Warning: Suspicious keyboard activity detected!',
         'mouse': '⚠️ Warning: Mouse movement outside exam area detected!',
         'clipboard': '⚠️ Warning: Copy/paste attempt detected!',
-        'devtools': '🚨 CRITICAL: Developer tools opened!',
-        'tab-navigation': '🚨 CRITICAL: Tab navigation blocked!',
-        'window-switch': '🚨 CRITICAL: Window switching blocked!',
-        'task-manager': '🚨 CRITICAL: Task Manager access blocked!'
+        'devtools': '🚨 CRITICAL: Developer tools opened!'
       };
 
       const message = warningMessages[violationType] || '⚠️ Warning: Suspicious activity detected!';
@@ -2310,14 +2061,6 @@ class ExamLockdown {
       if (this.violationClearCheckInterval) {
         clearInterval(this.violationClearCheckInterval);
         this.violationClearCheckInterval = null;
-      }
-      if (this.fullscreenMonitorInterval) {
-        clearInterval(this.fullscreenMonitorInterval);
-        this.fullscreenMonitorInterval = null;
-      }
-      if (this.periodicUrlCheckInterval) {
-        clearInterval(this.periodicUrlCheckInterval);
-        this.periodicUrlCheckInterval = null;
       }
       if (this.submissionExpiryTimerId) {
         clearInterval(this.submissionExpiryTimerId);
