@@ -663,6 +663,10 @@ class ExamLockdown {
 
             if (!cleared && this.config?.googleSheetsWebhookUrl) {
               try {
+                // Add timeout and better error handling for webhook
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
                 const response = await fetch(this.config.googleSheetsWebhookUrl, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -670,15 +674,22 @@ class ExamLockdown {
                     action: 'checkClearStatus',
                     sessionId: this.sessionInfo.sessionId,
                     studentEmail: this.userEmail
-                  })
+                  }),
+                  signal: controller.signal
                 });
+
+                clearTimeout(timeoutId);
 
                 if (response.ok) {
                   const result = await response.json();
                   cleared = result && result.cleared;
                 }
               } catch (err) {
-                console.warn('Direct webhook clear status check failed:', err);
+                if (err.name === 'AbortError') {
+                  console.warn('Clear status webhook request timed out after 5 seconds');
+                } else {
+                  console.warn('Direct webhook clear status check failed:', err);
+                }
               }
             }
 
@@ -793,6 +804,10 @@ class ExamLockdown {
 
       if (this.config?.googleSheetsWebhookUrl) {
         try {
+          // Add timeout and better error handling for webhook
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
           const response = await fetch(this.config.googleSheetsWebhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -802,18 +817,27 @@ class ExamLockdown {
                 ...violationData,
                 timestamp: new Date().toISOString()
               }
-            })
+            }),
+            signal: controller.signal
           });
+
+          clearTimeout(timeoutId);
 
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
         } catch (err) {
-          console.error('Direct webhook violation logging failed:', err);
+          if (err.name === 'AbortError') {
+            console.warn('Webhook request timed out after 10 seconds');
+          } else {
+            console.warn('Direct webhook violation logging failed:', err);
+          }
+          // Don't throw error - continue with exam even if webhook fails
         }
       }
     } catch (error) {
-      console.error('Error logging violation:', error);
+      console.warn('Error logging violation (continuing anyway):', error);
+      // Don't throw - continue exam even if logging fails
     }
   }
 
@@ -1461,6 +1485,10 @@ class ExamLockdown {
 
       if (this.config?.googleSheetsWebhookUrl) {
         try {
+          // Add timeout and better error handling for webhook
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
           const response = await fetch(this.config.googleSheetsWebhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1470,8 +1498,11 @@ class ExamLockdown {
                 ...violationData,
                 timestamp: new Date().toISOString()
               }
-            })
+            }),
+            signal: controller.signal
           });
+
+          clearTimeout(timeoutId);
 
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -1479,13 +1510,17 @@ class ExamLockdown {
 
           return await response.json();
         } catch (err) {
-          console.error('Direct webhook violation logging failed:', err);
-          throw err;
+          if (err.name === 'AbortError') {
+            console.warn('Webhook request timed out after 10 seconds');
+          } else {
+            console.warn('Direct webhook violation logging failed:', err);
+          }
+          // Don't throw error - continue with exam even if webhook fails
         }
       }
     } catch (error) {
-      console.error('Error logging violation:', error);
-      throw error;
+      console.warn('Error logging violation (continuing anyway):', error);
+      // Don't throw - continue exam even if logging fails
     }
   }
 
@@ -1949,12 +1984,25 @@ class ExamLockdown {
           <h2>Fullscreen Required</h2>
           <p>You must remain in fullscreen mode to continue the exam.</p>
           <p>Please press F11 or click the button below to re-enter fullscreen.</p>
-          <button class="exam-button" onclick="document.documentElement.requestFullscreen()">Enter Fullscreen</button>
+          <button class="exam-button" id="fullscreen-enter-btn">Enter Fullscreen</button>
         </div>
       `;
 
       document.body.appendChild(overlay);
       this.currentOverlay = overlay;
+
+      // Add proper event listener for fullscreen button
+      const fullscreenBtn = document.getElementById('fullscreen-enter-btn');
+      if (fullscreenBtn) {
+        fullscreenBtn.addEventListener('click', async () => {
+          try {
+            await document.documentElement.requestFullscreen();
+          } catch (error) {
+            console.error('Error requesting fullscreen:', error);
+            this.showNotification('Failed to enter fullscreen. Please try again.', 'error');
+          }
+        });
+      }
     } catch (error) {
       console.error('Error showing fullscreen warning:', error);
     }
