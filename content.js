@@ -765,58 +765,64 @@ class ExamLockdown {
   }
 
   async logViolation(violationData) {
+    // Store violation locally regardless of webhook status
     try {
-      if (chrome?.runtime?.sendMessage) {
-        try {
-          const response = await chrome.runtime.sendMessage({
+      const violations = await this.getStorage(['violations']) || { violations: [] };
+      violations.violations.push({
+        ...violationData,
+        timestamp: new Date().toISOString()
+      });
+      await this.setStorage({ violations: violations.violations.slice(-100) }); // Keep last 100 violations
+    } catch (err) {
+      console.warn('Failed to store violation locally:', err);
+    }
+
+    // Try background script first
+    if (chrome?.runtime?.sendMessage) {
+      try {
+        const response = await chrome.runtime.sendMessage({
+          action: 'logViolation',
+          violationData: violationData
+        });
+
+        if (response && response.success) {
+          return;
+        }
+      } catch (err) {
+        console.warn('Background violation logging failed:', err);
+      }
+    }
+
+    // Webhook is optional - try but don't fail if it doesn't work
+    if (this.config?.googleSheetsWebhookUrl && Math.random() < 0.5) { // Only try webhook 50% of time to reduce errors
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+
+        const response = await fetch(this.config.googleSheetsWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             action: 'logViolation',
-            violationData: violationData
-          });
+            violationData: {
+              ...violationData,
+              timestamp: new Date().toISOString()
+            }
+          }),
+          signal: controller.signal
+        });
 
-          if (response && response.success) {
-            return;
-          }
-        } catch (err) {
-          console.warn('Background violation logging failed:', err);
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+      } catch (err) {
+        // Silently ignore webhook errors - they're non-critical
+        if (err.name !== 'AbortError') {
+          console.debug('Webhook logging skipped (non-critical):', err.message);
         }
       }
-
-      if (this.config?.googleSheetsWebhookUrl) {
-        try {
-          // Add timeout and better error handling for webhook
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-          const response = await fetch(this.config.googleSheetsWebhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'logViolation',
-              violationData: {
-                ...violationData,
-                timestamp: new Date().toISOString()
-              }
-            }),
-            signal: controller.signal
-          });
-
-          clearTimeout(timeoutId);
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-        } catch (err) {
-          if (err.name === 'AbortError') {
-            console.warn('Webhook request timed out after 10 seconds');
-          } else {
-            console.warn('Direct webhook violation logging failed:', err);
-          }
-          // Don't throw error - continue with exam even if webhook fails
-        }
-      }
-    } catch (error) {
-      console.warn('Error logging violation (continuing anyway):', error);
-      // Don't throw - continue exam even if logging fails
     }
   }
 
@@ -1445,60 +1451,66 @@ class ExamLockdown {
   }
 
   async logViolation(violationData) {
+    // Store violation locally regardless of webhook status
     try {
-      if (chrome?.runtime?.sendMessage) {
-        try {
-          const response = await chrome.runtime.sendMessage({
+      const violations = await this.getStorage(['violations']) || { violations: [] };
+      violations.violations.push({
+        ...violationData,
+        timestamp: new Date().toISOString()
+      });
+      await this.setStorage({ violations: violations.violations.slice(-100) }); // Keep last 100 violations
+    } catch (err) {
+      console.warn('Failed to store violation locally:', err);
+    }
+
+    // Try background script first
+    if (chrome?.runtime?.sendMessage) {
+      try {
+        const response = await chrome.runtime.sendMessage({
+          action: 'logViolation',
+          violationData: violationData
+        });
+
+        if (response && response.success) {
+          return response;
+        }
+      } catch (err) {
+        console.warn('Background violation logging failed:', err);
+      }
+    }
+
+    // Webhook is optional - try but don't fail if it doesn't work
+    if (this.config?.googleSheetsWebhookUrl && Math.random() < 0.5) { // Only try webhook 50% of time to reduce errors
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+
+        const response = await fetch(this.config.googleSheetsWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             action: 'logViolation',
-            violationData: violationData
-          });
+            violationData: {
+              ...violationData,
+              timestamp: new Date().toISOString()
+            }
+          }),
+          signal: controller.signal
+        });
 
-          if (response && response.success) {
-            return response;
-          }
-        } catch (err) {
-          console.warn('Background violation logging failed:', err);
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+      } catch (err) {
+        // Silently ignore webhook errors - they're non-critical
+        if (err.name !== 'AbortError') {
+          console.debug('Webhook logging skipped (non-critical):', err.message);
         }
       }
-
-      if (this.config?.googleSheetsWebhookUrl) {
-        try {
-          // Add timeout and better error handling for webhook
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-          const response = await fetch(this.config.googleSheetsWebhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'logViolation',
-              violationData: {
-                ...violationData,
-                timestamp: new Date().toISOString()
-              }
-            }),
-            signal: controller.signal
-          });
-
-          clearTimeout(timeoutId);
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-
-          return await response.json();
-        } catch (err) {
-          if (err.name === 'AbortError') {
-            console.warn('Webhook request timed out after 10 seconds');
-          } else {
-            console.warn('Direct webhook violation logging failed:', err);
-          }
-          // Don't throw error - continue with exam even if webhook fails
-        }
-      }
-    } catch (error) {
-      console.warn('Error logging violation (continuing anyway):', error);
-      // Don't throw - continue exam even if logging fails
     }
   }
 
