@@ -243,26 +243,122 @@ class ExamLockdown {
         
         // Detect common forbidden shortcuts
         const forbiddenKeys = [
+          // Basic shortcuts
           { ctrl: true, key: 'c', desc: 'copy' },
           { ctrl: true, key: 'v', desc: 'paste' },
           { ctrl: true, key: 'x', desc: 'cut' },
+          { ctrl: true, key: 'u', desc: 'view-source' },
+          
+          // DevTools shortcuts
           { ctrl: true, shift: true, key: 'i', desc: 'devtools' },
           { ctrl: true, shift: true, key: 'j', desc: 'devtools' },
           { ctrl: true, shift: true, key: 'c', desc: 'devtools' },
           { key: 'F12', desc: 'devtools' },
-          { ctrl: true, key: 'u', desc: 'view-source' }
+          
+          // Tab switching and window management
+          { ctrl: true, key: 'Tab', desc: 'tab-switch' },
+          { ctrl: true, key: 'PageUp', desc: 'tab-switch' },
+          { ctrl: true, key: 'PageDown', desc: 'tab-switch' },
+          { ctrl: true, key: '1', desc: 'tab-switch' },
+          { ctrl: true, key: '2', desc: 'tab-switch' },
+          { ctrl: true, key: '3', desc: 'tab-switch' },
+          { ctrl: true, key: '4', desc: 'tab-switch' },
+          { ctrl: true, key: '5', desc: 'tab-switch' },
+          { ctrl: true, key: '6', desc: 'tab-switch' },
+          { ctrl: true, key: '7', desc: 'tab-switch' },
+          { ctrl: true, key: '8', desc: 'tab-switch' },
+          { ctrl: true, key: '9', desc: 'tab-switch' },
+          { ctrl: true, key: '0', desc: 'tab-switch' },
+          
+          // Alt+Tab combinations (window switching)
+          { alt: true, key: 'Tab', desc: 'window-switch' },
+          { alt: true, key: 'Escape', desc: 'window-switch' },
+          { alt: true, key: 'F4', desc: 'window-close' },
+          
+          // Windows key combinations
+          { meta: true, key: 'Tab', desc: 'window-switch' },
+          { meta: true, key: 'Escape', desc: 'window-switch' },
+          { meta: true, shift: true, key: 'Tab', desc: 'window-switch' },
+          { meta: true, key: 'ArrowLeft', desc: 'window-switch' },
+          { meta: true, key: 'ArrowRight', desc: 'window-switch' },
+          { meta: true, key: 'ArrowUp', desc: 'window-switch' },
+          { meta: true, key: 'ArrowDown', desc: 'window-switch' },
+          
+          // Task Manager and System shortcuts
+          { ctrl: true, shift: true, key: 'Escape', desc: 'task-manager' },
+          { ctrl: true, alt: true, key: 'Delete', desc: 'task-manager' },
+          { meta: true, shift: true, key: 'Escape', desc: 'task-manager' },
+          
+          // Function keys that might open system tools
+          { key: 'F1', desc: 'help' },
+          { key: 'F3', desc: 'search' },
+          { key: 'F5', desc: 'refresh' },
+          { key: 'F6', desc: 'address-bar' },
+          { key: 'F7', desc: 'caret-browsing' },
+          { key: 'F10', desc: 'menu' },
+          { key: 'F11', desc: 'fullscreen-toggle' },
+          
+          // Browser-specific shortcuts
+          { ctrl: true, key: 'h', desc: 'history' },
+          { ctrl: true, key: 'j', desc: 'downloads' },
+          { ctrl: true, key: 'l', desc: 'address-bar' },
+          { ctrl: true, key: 'n', desc: 'new-window' },
+          { ctrl: true, key: 't', desc: 'new-tab' },
+          { ctrl: true, key: 'w', desc: 'close-tab' },
+          { ctrl: true, key: 'q', desc: 'quit' },
+          { ctrl: true, shift: true, key: 't', desc: 'new-tab' },
+          { ctrl: true, shift: true, key: 'n', desc: 'new-window' },
+          { ctrl: true, shift: true, key: 'w', desc: 'close-window' },
+          
+          // Alt key combinations
+          { alt: true, key: 'ArrowLeft', desc: 'back' },
+          { alt: true, key: 'ArrowRight', desc: 'forward' },
+          { alt: true, key: 'ArrowUp', desc: 'scroll-up' },
+          { alt: true, key: 'ArrowDown', desc: 'scroll-down' },
+          { alt: true, key: 'Home', desc: 'home' },
+          
+          // Shift+Alt combinations
+          { shift: true, alt: true, key: 'Tab', desc: 'window-switch' },
+          { shift: true, alt: true, key: 'Escape', desc: 'window-switch' }
         ];
 
         const isForbidden = forbiddenKeys.some(shortcut => {
           if (shortcut.ctrl && !e.ctrlKey) return false;
           if (shortcut.shift && !e.shiftKey) return false;
+          if (shortcut.alt && !e.altKey) return false;
+          if (shortcut.meta && !e.metaKey) return false; // meta is Windows/Cmd key
           if (shortcut.key === e.key) return true;
           return false;
         });
 
-        if (isForbidden) {
+        // Also block Tab key completely during exam (except in input fields)
+        const isTabKey = e.key === 'Tab';
+        const isInInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.contentEditable === 'true';
+        
+        if (isForbidden || (isTabKey && !isInInput)) {
           e.preventDefault();
-          this.handleViolation('keyboard');
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          
+          // Log the specific violation type
+          const violationType = isTabKey ? 'tab-navigation' : 'keyboard';
+          console.log('[ExamLockdown] Blocked keyboard shortcut:', e.key, e.ctrlKey ? 'Ctrl' : '', e.altKey ? 'Alt' : '', e.shiftKey ? 'Shift' : '', e.metaKey ? 'Meta' : '');
+          
+          this.handleViolation(violationType);
+          
+          // Show immediate warning for serious violations
+          const matchedShortcut = forbiddenKeys.find(shortcut => {
+            if (shortcut.ctrl && !e.ctrlKey) return false;
+            if (shortcut.shift && !e.shiftKey) return false;
+            if (shortcut.alt && !e.altKey) return false;
+            if (shortcut.meta && !e.metaKey) return false;
+            if (shortcut.key === e.key) return true;
+            return false;
+          });
+          
+          if (matchedShortcut?.desc === 'window-switch' || matchedShortcut?.desc === 'task-manager' || isTabKey) {
+            this.showImmediateWarning('Window/tab switching is not allowed during exam!');
+          }
         }
       });
 
@@ -358,6 +454,44 @@ class ExamLockdown {
       }
     } catch (error) {
       console.error('Error handling URL change:', error);
+    }
+  }
+
+  showImmediateWarning(message) {
+    try {
+      if (this.currentOverlay) return; // Don't show if overlay already exists
+
+      const overlay = document.createElement('div');
+      overlay.className = 'exam-overlay immediate-warning';
+      overlay.innerHTML = `
+        <div class="exam-overlay-content warning-content">
+          <div class="exam-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+          <h2>⚠️ Exam Violation Detected!</h2>
+          <p>${message}</p>
+          <p class="violation-count">Total Violations: ${this.violationCount}</p>
+          <button class="exam-button" onclick="this.closest('.exam-overlay').remove()">I Understand</button>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+      this.currentOverlay = overlay;
+
+      // Auto-remove after 2 seconds
+      setTimeout(() => {
+        if (overlay.parentElement) {
+          overlay.remove();
+          this.currentOverlay = null;
+        }
+      }, 2000);
+
+    } catch (error) {
+      console.error('Error showing immediate warning:', error);
     }
   }
 
@@ -663,7 +797,10 @@ class ExamLockdown {
             'keyboard': 1500,
             'mouse': 1500,
             'clipboard': 1500,
-            'devtools': 1500
+            'devtools': 1500,
+            'tab-navigation': 1000,
+            'window-switch': 500,
+            'task-manager': 500
           }
         };
       }
@@ -868,7 +1005,10 @@ class ExamLockdown {
       'mouse': 'low',
       'clipboard': 'medium',
       'devtools': 'high',
-      'time_exceeded': 'high'
+      'time_exceeded': 'high',
+      'tab-navigation': 'high',
+      'window-switch': 'critical',
+      'task-manager': 'critical'
     };
     return severityMap[violationType] || 'medium';
   }
@@ -925,7 +1065,10 @@ class ExamLockdown {
         'keyboard': '⚠️ Warning: Suspicious keyboard activity detected!',
         'mouse': '⚠️ Warning: Mouse movement outside exam area detected!',
         'clipboard': '⚠️ Warning: Copy/paste attempt detected!',
-        'devtools': '🚨 CRITICAL: Developer tools opened!'
+        'devtools': '🚨 CRITICAL: Developer tools opened!',
+        'tab-navigation': '🚨 CRITICAL: Tab navigation blocked!',
+        'window-switch': '🚨 CRITICAL: Window switching blocked!',
+        'task-manager': '🚨 CRITICAL: Task Manager access blocked!'
       };
 
       const message = warningMessages[violationType] || '⚠️ Warning: Suspicious activity detected!';
@@ -1639,7 +1782,10 @@ class ExamLockdown {
       'mouse': 'low',
       'clipboard': 'medium',
       'devtools': 'high',
-      'time_exceeded': 'high'
+      'time_exceeded': 'high',
+      'tab-navigation': 'high',
+      'window-switch': 'critical',
+      'task-manager': 'critical'
     };
     return severityMap[violationType] || 'medium';
   }
@@ -1652,7 +1798,10 @@ class ExamLockdown {
         'keyboard': '⚠️ Warning: Suspicious keyboard activity detected!',
         'mouse': '⚠️ Warning: Mouse movement outside exam area detected!',
         'clipboard': '⚠️ Warning: Copy/paste attempt detected!',
-        'devtools': '🚨 CRITICAL: Developer tools opened!'
+        'devtools': '🚨 CRITICAL: Developer tools opened!',
+        'tab-navigation': '🚨 CRITICAL: Tab navigation blocked!',
+        'window-switch': '🚨 CRITICAL: Window switching blocked!',
+        'task-manager': '🚨 CRITICAL: Task Manager access blocked!'
       };
 
       const message = warningMessages[violationType] || '⚠️ Warning: Suspicious activity detected!';

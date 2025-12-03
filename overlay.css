@@ -493,6 +493,25 @@ p {
   box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
 }
 
+.immediate-warning .exam-overlay-content {
+  animation: pulse-warning 0.5s ease-in-out;
+  border: 2px solid #ef4444;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05));
+}
+
+.violation-count {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ef4444;
+  margin: 16px 0;
+}
+
+@keyframes pulse-warning {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
 .auto-submit-status {
   margin: 32px 0;
   display: flex;
