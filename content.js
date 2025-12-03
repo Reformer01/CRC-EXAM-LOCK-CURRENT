@@ -1,3 +1,7 @@
+console.log('🚀 ExamLockdown: Content script loaded at', new Date().toISOString());
+console.log('🚀 ExamLockdown: URL:', window.location.href);
+console.log('🚀 ExamLockdown: Chrome APIs available:', typeof chrome !== 'undefined');
+
 let historyInstrumentationApplied = false;
 
 function ensureHistoryInstrumentation() {
@@ -2250,4 +2254,15 @@ try {
   initExamLockdown();
 } catch (error) {
   console.error('Failed to start ExamLockdown initialization:', error);
+}
+
+// Also try initializing when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 ExamLockdown: DOM loaded, initializing...');
+    setTimeout(initExamLockdown, 1000);
+  });
+} else {
+  console.log('🚀 ExamLockdown: DOM already loaded, initializing...');
+  setTimeout(initExamLockdown, 1000);
 }
