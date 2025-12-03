@@ -139,12 +139,10 @@ class ExamLockdown {
 
   initialize() {
     try {
-      setTimeout(async () => {
+      setTimeout(() => {
         this.initComponents();
         this.setupEventListeners();
         this.initialized = true;
-        // Initialize exam after basic setup is complete
-        await this.initializeExam();
       }, 100);
     } catch (error) {
       console.error('Error during initialization:', error);
@@ -164,7 +162,7 @@ class ExamLockdown {
   setupEventListeners() {
     try {
       this.setupFullscreenListener();
-      this.setupFormSubmissionListeners();
+      this.setupFormSubmissionListener();
       this.setupUrlChangeListener();
       this.setupKeyboardProtection();
       this.initialized = true;
@@ -187,195 +185,10 @@ class ExamLockdown {
   handleUrlChange() {
     try {
       if (this.initialized && !this.runtimeInvalidated) {
-        this.initializeExam();
+        this.initialize();
       }
     } catch (error) {
       console.error('Error handling URL change:', error);
-    }
-  }
-
-  setupKeyboardProtection() {
-    try {
-      // Define dangerous keyboard shortcuts that could bypass lockdown
-      const dangerousShortcuts = [
-        // Tab switching
-        { ctrl: true, key: 'Tab', description: 'Ctrl+Tab' },
-        { ctrl: true, key: 'PageDown', description: 'Ctrl+PageDown' },
-        { ctrl: true, key: 'PageUp', description: 'Ctrl+PageUp' },
-        
-        // Window switching
-        { alt: true, key: 'Tab', description: 'Alt+Tab' },
-        { meta: true, key: 'Tab', description: 'Cmd+Tab' },
-        
-        // New windows/tabs
-        { ctrl: true, key: 'n', description: 'Ctrl+N' },
-        { ctrl: true, key: 't', description: 'Ctrl+T' },
-        { meta: true, key: 'n', description: 'Cmd+N' },
-        { meta: true, key: 't', description: 'Cmd+T' },
-        
-        // History navigation
-        { alt: true, key: 'ArrowLeft', description: 'Alt+Left' },
-        { alt: true, key: 'ArrowRight', description: 'Alt+Right' },
-        { meta: true, key: '[', description: 'Cmd+[' },
-        { meta: true, key: ']', description: 'Cmd+]' },
-        
-        // Bookmark/developer tools
-        { ctrl: true, key: 'b', description: 'Ctrl+B' },
-        { ctrl: true, shift: true, key: 'i', description: 'Ctrl+Shift+I' },
-        { meta: true, alt: true, key: 'i', description: 'Cmd+Option+I' },
-        { f12: true, description: 'F12' },
-        
-        // Find/Search
-        { ctrl: true, key: 'f', description: 'Ctrl+F' },
-        { meta: true, key: 'f', description: 'Cmd+F' },
-        
-        // Print/Save
-        { ctrl: true, key: 'p', description: 'Ctrl+P' },
-        { meta: true, key: 'p', description: 'Cmd+P' },
-        { ctrl: true, key: 's', description: 'Ctrl+S' },
-        { meta: true, key: 's', description: 'Cmd+S' },
-        
-        // System shortcuts
-        { ctrl: true, shift: true, key: 'Escape', description: 'Ctrl+Shift+Esc' },
-        { ctrl: true, alt: true, key: 'Delete', description: 'Ctrl+Alt+Delete' },
-        { meta: true, alt: true, key: 'Escape', description: 'Cmd+Option+Esc' },
-        
-        // Windows/Meta key combinations
-        { meta: true, key: ' ', description: 'Win+Space' },
-        { meta: true, key: 'd', description: 'Win+D' },
-        { meta: true, key: 'e', description: 'Win+E' },
-        { meta: true, key: 'l', description: 'Win+L' },
-        { meta: true, key: 'r', description: 'Win+R' },
-        { meta: true, shift: true, key: 's', description: 'Win+Shift+S' },
-        
-        // Additional dangerous combinations
-        { ctrl: true, alt: true, key: 'Tab', description: 'Ctrl+Alt+Tab' },
-        { ctrl: true, shift: true, key: 'Tab', description: 'Ctrl+Shift+Tab' },
-        { alt: true, shift: true, key: 'Tab', description: 'Alt+Shift+Tab' }
-      ];
-
-      const keydownHandler = (e) => {
-        // Only enforce during active exam
-        if (!this.isExamStarted || this.examSubmitted) {
-          return;
-        }
-
-        const key = e.key;
-        const keyCode = e.keyCode || e.which;
-        const ctrl = e.ctrlKey;
-        const alt = e.altKey;
-        const meta = e.metaKey; // Cmd key on Mac
-        const shift = e.shiftKey;
-
-        // Check for dangerous shortcuts
-        for (const shortcut of dangerousShortcuts) {
-          let match = false;
-          
-          if (shortcut.f12 && keyCode === 123) {
-            match = true;
-          } else if (shortcut.ctrl && ctrl && 
-                    (!shortcut.alt || alt) && 
-                    (!shortcut.meta || meta) && 
-                    (!shortcut.shift || shift) && 
-                    key.toLowerCase() === shortcut.key.toLowerCase()) {
-            match = true;
-          } else if (shortcut.alt && alt && 
-                    (!shortcut.ctrl || ctrl) && 
-                    (!shortcut.meta || meta) && 
-                    (!shortcut.shift || shift) && 
-                    key.toLowerCase() === shortcut.key.toLowerCase()) {
-            match = true;
-          } else if (shortcut.meta && meta && 
-                    (!shortcut.alt || alt) && 
-                    (!shortcut.ctrl || ctrl) && 
-                    (!shortcut.shift || shift) && 
-                    key.toLowerCase() === shortcut.key.toLowerCase()) {
-            match = true;
-          }
-          
-          if (match) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-            
-            console.log(`[ExamLockdown] Blocked dangerous shortcut: ${shortcut.description}`);
-            
-            // Log as keyboard violation
-            this.handleViolation('keyboard', {
-              shortcut: shortcut.description,
-              key: key,
-              ctrl: ctrl,
-              alt: alt,
-              meta: meta,
-              shift: shift
-            });
-            
-            return false;
-          }
-        }
-
-        // Additional protection: Block all F-keys except F11 (fullscreen)
-        if (keyCode >= 112 && keyCode <= 123 && keyCode !== 122) { // F1-F11, F13-F24 (except F11)
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-          
-          console.log(`[ExamLockdown] Blocked F${keyCode - 111} key`);
-          
-          this.handleViolation('keyboard', {
-            blocked: `F${keyCode - 111}`,
-            type: 'function_key'
-          });
-          
-          return false;
-        }
-
-        // Block Escape key if it might be used to exit fullscreen
-        if (keyCode === 27 && document.fullscreenElement) { // Escape key
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-          
-          console.log('[ExamLockdown] Blocked Escape key to prevent fullscreen exit');
-          
-          this.handleViolation('keyboard', {
-            blocked: 'Escape',
-            type: 'fullscreen_exit_attempt'
-          });
-          
-          return false;
-        }
-
-        // Block Windows/Meta key alone to prevent Start menu
-        if (meta && !ctrl && !alt && !shift) {
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-          
-          console.log('[ExamLockdown] Blocked Windows/Meta key to prevent Start menu');
-          
-          this.handleViolation('keyboard', {
-            blocked: 'Windows/Meta',
-            type: 'system_key_attempt'
-          });
-          
-          return false;
-        }
-      };
-
-      // Add event listeners with capture phase to intercept early
-      document.addEventListener('keydown', keydownHandler, true);
-      document.addEventListener('keyup', keydownHandler, true);
-      
-      // Store cleanup function
-      this.eventListeners.push(() => {
-        document.removeEventListener('keydown', keydownHandler, true);
-        document.removeEventListener('keyup', keydownHandler, true);
-      });
-      
-      console.log('[ExamLockdown] Keyboard protection enabled');
-    } catch (error) {
-      console.error('Error setting up keyboard protection:', error);
     }
   }
 
@@ -642,10 +455,6 @@ class ExamLockdown {
 
             if (!cleared && this.config?.googleSheetsWebhookUrl) {
               try {
-                // Add timeout and better error handling for webhook
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-
                 const response = await fetch(this.config.googleSheetsWebhookUrl, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -653,22 +462,15 @@ class ExamLockdown {
                     action: 'checkClearStatus',
                     sessionId: this.sessionInfo.sessionId,
                     studentEmail: this.userEmail
-                  }),
-                  signal: controller.signal
+                  })
                 });
-
-                clearTimeout(timeoutId);
 
                 if (response.ok) {
                   const result = await response.json();
                   cleared = result && result.cleared;
                 }
               } catch (err) {
-                if (err.name === 'AbortError') {
-                  console.warn('Clear status webhook request timed out after 5 seconds');
-                } else {
-                  console.warn('Direct webhook clear status check failed:', err);
-                }
+                console.warn('Direct webhook clear status check failed:', err);
               }
             }
 
@@ -765,72 +567,50 @@ class ExamLockdown {
   }
 
   async logViolation(violationData) {
-    // Store violation locally regardless of webhook status
     try {
-      const stored = await this.getStorage(['violations']);
-      const violations = (stored && stored.violations) ? stored.violations : [];
-      violations.push({
-        ...violationData,
-        timestamp: new Date().toISOString()
-      });
-      await this.setStorage({ violations: violations.slice(-100) }); // Keep last 100 violations
-    } catch (err) {
-      console.warn('Failed to store violation locally:', err);
-    }
-
-    // Try background script first
-    if (chrome?.runtime?.sendMessage) {
-      try {
-        const response = await chrome.runtime.sendMessage({
-          action: 'logViolation',
-          violationData: violationData
-        });
-
-        if (response && response.success) {
-          return;
-        }
-      } catch (err) {
-        console.warn('Background violation logging failed:', err);
-      }
-    }
-
-    // Webhook is optional - try but don't fail if it doesn't work
-    if (this.config?.googleSheetsWebhookUrl && Math.random() < 0.5) { // Only try webhook 50% of time to reduce errors
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-
-        const response = await fetch(this.config.googleSheetsWebhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+      if (chrome?.runtime?.sendMessage) {
+        try {
+          const response = await chrome.runtime.sendMessage({
             action: 'logViolation',
-            violationData: {
-              ...violationData,
-              timestamp: new Date().toISOString()
-            }
-          }),
-          signal: controller.signal
-        });
+            violationData: violationData
+          });
 
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-      } catch (err) {
-        // Silently ignore webhook errors - they're non-critical
-        if (err.name !== 'AbortError') {
-          console.debug('Webhook logging skipped (non-critical):', err.message);
+          if (response && response.success) {
+            return;
+          }
+        } catch (err) {
+          console.warn('Background violation logging failed:', err);
         }
       }
+
+      if (this.config?.googleSheetsWebhookUrl) {
+        try {
+          const response = await fetch(this.config.googleSheetsWebhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'logViolation',
+              violationData: {
+                ...violationData,
+                timestamp: new Date().toISOString()
+              }
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+        } catch (err) {
+          console.error('Direct webhook violation logging failed:', err);
+        }
+      }
+    } catch (error) {
+      console.error('Error logging violation:', error);
     }
   }
 
   showViolationWarning(violationType) {
     try {
-      if (this.currentOverlay) return; // Don't show if another overlay is active
-
       const warningMessages = {
         'visibilitychange': '⚠️ Warning: Tab switching detected!',
         'window-blur': '⚠️ Warning: Window focus lost!',
@@ -843,72 +623,9 @@ class ExamLockdown {
       const message = warningMessages[violationType] || '⚠️ Warning: Suspicious activity detected!';
       const remainingViolations = this.config.maxViolations - this.violationCount;
 
-      const overlay = document.createElement('div');
-      overlay.className = 'exam-overlay violation-overlay';
-      overlay.innerHTML = `
-        <div class="exam-overlay-content violation-content">
-          <div class="exam-icon warning-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-          </div>
-          <h2>Violation Detected</h2>
-          <p>${message}</p>
-          <div class="violation-count">
-            <strong>Violations: ${this.violationCount} / ${this.config.maxViolations}</strong>
-          </div>
-          <p class="remaining-warnings">${remainingViolations} warnings remaining</p>
-          <button class="exam-button violation-ack-btn">I Understand</button>
-        </div>
-      `;
-
-      document.body.appendChild(overlay);
-      this.currentOverlay = overlay;
-
-      // Add auto-dismiss after 5 seconds
-      const autoDismiss = setTimeout(() => {
-        this.removeCurrentOverlay();
-        this.checkAndRestoreFullscreen();
-      }, 5000);
-
-      // Add click handler for acknowledgment button
-      const ackBtn = overlay.querySelector('.violation-ack-btn');
-      if (ackBtn) {
-        ackBtn.addEventListener('click', () => {
-          clearTimeout(autoDismiss);
-          this.removeCurrentOverlay();
-          this.checkAndRestoreFullscreen();
-        });
-      }
-
-      // Also show notification for additional visibility
       this.showNotification(`${message} (${remainingViolations} warnings remaining)`, 'warning');
     } catch (error) {
-      console.error('Error showing violation warning overlay:', error);
-      // Fallback to notification if overlay fails
-      this.showNotification(`Warning: ${violationType} detected!`, 'warning');
-    }
-  }
-
-  checkAndRestoreFullscreen() {
-    try {
-      if (!document.fullscreenElement && this.isExamStarted && !this.examSubmitted) {
-        console.log('[ExamLockdown] Restoring fullscreen after violation');
-        this.requestFullscreen();
-      }
-    } catch (error) {
-      console.error('Error checking/restoring fullscreen:', error);
-    }
-  }
-
-  async requestFullscreen() {
-    try {
-      await document.documentElement.requestFullscreen();
-    } catch (error) {
-      console.error('Error requesting fullscreen:', error);
-      this.showNotification('Failed to enter fullscreen. Please try again.', 'error');
+      console.error('Error showing violation warning:', error);
     }
   }
 
@@ -1076,22 +793,14 @@ class ExamLockdown {
       overlay.className = 'exam-overlay';
       overlay.innerHTML = `
         <div class="exam-overlay-content setup-content">
-          <div class="exam-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-              <polyline points="10 9 9 9 8 9"></polyline>
-            </svg>
-          </div>
+          <div class="exam-icon">📝</div>
           <h2>Exam Lockdown</h2>
           <p>Please enter your name to begin the exam.</p>
           <div class="input-group">
             <input type="text" id="student-name-input" placeholder="Enter your full name" maxlength="100">
           </div>
           <div class="exam-rules">
-            <h3>Exam Rules:</h3>
+            <h3>📋 Exam Rules:</h3>
             <ul>
               <li>You must remain in fullscreen mode</li>
               <li>No tab switching or opening new windows</li>
@@ -1126,35 +835,21 @@ class ExamLockdown {
   showSubmittedLockOverlay() {
     try {
       const overlay = document.createElement('div');
-      overlay.className = 'exam-overlay submitted-overlay';
+      overlay.className = 'exam-overlay';
       overlay.innerHTML = `
-        <div class="exam-overlay-content submitted-content">
-          <div class="exam-icon success-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-              <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
-          </div>
-          <h2>Exam Submitted Successfully</h2>
-          <p>This exam has been submitted and recorded.</p>
-          <div class="submission-details">
-            <div class="detail-item">
-              <strong>Student:</strong> ${this.studentName || 'Unknown'}
-            </div>
-            <div class="detail-item">
-              <strong>Time:</strong> ${new Date().toLocaleString()}
-            </div>
-            <div class="detail-item">
-              <strong>Status:</strong> <span class="status-completed">Completed</span>
+        <div class="exam-overlay-content warning-content">
+          <div class="exam-icon">⏰</div>
+          <h2>Exam Already Submitted</h2>
+          <p>This exam has already been submitted. You must wait 60 minutes before retaking it.</p>
+          <div class="countdown-container">
+            <div class="countdown-timer" id="countdown-timer">--:--</div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progress-fill"></div>
             </div>
           </div>
-          <div class="submission-message">
-            <p>Your exam has been successfully submitted and will be reviewed by the instructor.</p>
-            <p>You may now close this window.</p>
-          </div>
-          <div class="submission-actions">
-            <button class="exam-button secondary-btn" onclick="window.close()">Close Window</button>
-            <button class="exam-button primary-btn" onclick="location.reload()">View Results</button>
+          <div class="continue-section" id="continue-section" style="display: none;">
+            <p>✅ You can now retake the exam!</p>
+            <button class="exam-button" onclick="location.reload()">Start New Exam</button>
           </div>
         </div>
       `;
@@ -1162,20 +857,7 @@ class ExamLockdown {
       document.body.appendChild(overlay);
       this.currentOverlay = overlay;
 
-      // Prevent any further interaction with the exam
-      this.examSubmitted = true;
-      this.isExamStarted = false;
-      
-      // Log the successful submission
-      this.logViolation({
-        type: 'exam_submitted',
-        severity: 'info',
-        timestamp: new Date().toISOString(),
-        details: 'Exam submitted successfully',
-        studentName: this.studentName,
-        studentEmail: this.userEmail || '',
-        formUrl: window.location.href
-      });
+      this.startCountdown(3600);
     } catch (error) {
       console.error('Error showing submitted lock overlay:', error);
     }
@@ -1438,11 +1120,7 @@ class ExamLockdown {
     overlay.className = 'exam-overlay';
     overlay.innerHTML = `
       <div class="exam-overlay-content confirmation-content">
-        <div class="exam-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-          </div>
+        <div class="exam-icon">✅</div>
         <h2>Exam Submitted Successfully!</h2>
         <p>Your exam has been submitted and recorded.</p>
         <div class="submission-info">
@@ -1465,13 +1143,7 @@ class ExamLockdown {
     overlay.className = 'exam-overlay';
     overlay.innerHTML = `
       <div class="exam-overlay-content disqualification-content">
-        <div class="exam-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="15" y1="9" x2="9" y2="15"></line>
-              <line x1="9" y1="9" x2="15" y2="15"></line>
-            </svg>
-          </div>
+        <div class="exam-icon">❌</div>
         <h2>Submission Failed</h2>
         <p>There was an error submitting your exam:</p>
         <p style="color: #fca5a5; font-style: italic;">${message}</p>
@@ -1539,67 +1211,49 @@ class ExamLockdown {
   }
 
   async logViolation(violationData) {
-    // Store violation locally regardless of webhook status
     try {
-      const stored = await this.getStorage(['violations']);
-      const violations = (stored && stored.violations) ? stored.violations : [];
-      violations.push({
-        ...violationData,
-        timestamp: new Date().toISOString()
-      });
-      await this.setStorage({ violations: violations.slice(-100) }); // Keep last 100 violations
-    } catch (err) {
-      console.warn('Failed to store violation locally:', err);
-    }
-
-    // Try background script first
-    if (chrome?.runtime?.sendMessage) {
-      try {
-        const response = await chrome.runtime.sendMessage({
-          action: 'logViolation',
-          violationData: violationData
-        });
-
-        if (response && response.success) {
-          return response;
-        }
-      } catch (err) {
-        console.warn('Background violation logging failed:', err);
-      }
-    }
-
-    // Webhook is optional - try but don't fail if it doesn't work
-    if (this.config?.googleSheetsWebhookUrl && Math.random() < 0.5) { // Only try webhook 50% of time to reduce errors
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-
-        const response = await fetch(this.config.googleSheetsWebhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+      if (chrome?.runtime?.sendMessage) {
+        try {
+          const response = await chrome.runtime.sendMessage({
             action: 'logViolation',
-            violationData: {
-              ...violationData,
-              timestamp: new Date().toISOString()
-            }
-          }),
-          signal: controller.signal
-        });
+            violationData: violationData
+          });
 
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        return await response.json();
-      } catch (err) {
-        // Silently ignore webhook errors - they're non-critical
-        if (err.name !== 'AbortError') {
-          console.debug('Webhook logging skipped (non-critical):', err.message);
+          if (response && response.success) {
+            return response;
+          }
+        } catch (err) {
+          console.warn('Background violation logging failed:', err);
         }
       }
+
+      if (this.config?.googleSheetsWebhookUrl) {
+        try {
+          const response = await fetch(this.config.googleSheetsWebhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'logViolation',
+              violationData: {
+                ...violationData,
+                timestamp: new Date().toISOString()
+              }
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          return await response.json();
+        } catch (err) {
+          console.error('Direct webhook violation logging failed:', err);
+          throw err;
+        }
+      }
+    } catch (error) {
+      console.error('Error logging violation:', error);
+      throw error;
     }
   }
 
@@ -1660,8 +1314,6 @@ class ExamLockdown {
 
   showViolationWarning(violationType) {
     try {
-      if (this.currentOverlay) return; // Don't show if another overlay is active
-
       const warningMessages = {
         'visibilitychange': '⚠️ Warning: Tab switching detected!',
         'window-blur': '⚠️ Warning: Window focus lost!',
@@ -1674,72 +1326,9 @@ class ExamLockdown {
       const message = warningMessages[violationType] || '⚠️ Warning: Suspicious activity detected!';
       const remainingViolations = this.config.maxViolations - this.violationCount;
 
-      const overlay = document.createElement('div');
-      overlay.className = 'exam-overlay violation-overlay';
-      overlay.innerHTML = `
-        <div class="exam-overlay-content violation-content">
-          <div class="exam-icon warning-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-          </div>
-          <h2>Violation Detected</h2>
-          <p>${message}</p>
-          <div class="violation-count">
-            <strong>Violations: ${this.violationCount} / ${this.config.maxViolations}</strong>
-          </div>
-          <p class="remaining-warnings">${remainingViolations} warnings remaining</p>
-          <button class="exam-button violation-ack-btn">I Understand</button>
-        </div>
-      `;
-
-      document.body.appendChild(overlay);
-      this.currentOverlay = overlay;
-
-      // Add auto-dismiss after 5 seconds
-      const autoDismiss = setTimeout(() => {
-        this.removeCurrentOverlay();
-        this.checkAndRestoreFullscreen();
-      }, 5000);
-
-      // Add click handler for acknowledgment button
-      const ackBtn = overlay.querySelector('.violation-ack-btn');
-      if (ackBtn) {
-        ackBtn.addEventListener('click', () => {
-          clearTimeout(autoDismiss);
-          this.removeCurrentOverlay();
-          this.checkAndRestoreFullscreen();
-        });
-      }
-
-      // Also show notification for additional visibility
       this.showNotification(`${message} (${remainingViolations} warnings remaining)`, 'warning');
     } catch (error) {
-      console.error('Error showing violation warning overlay:', error);
-      // Fallback to notification if overlay fails
-      this.showNotification(`Warning: ${violationType} detected!`, 'warning');
-    }
-  }
-
-  checkAndRestoreFullscreen() {
-    try {
-      if (!document.fullscreenElement && this.isExamStarted && !this.examSubmitted) {
-        console.log('[ExamLockdown] Restoring fullscreen after violation');
-        this.requestFullscreen();
-      }
-    } catch (error) {
-      console.error('Error checking/restoring fullscreen:', error);
-    }
-  }
-
-  async requestFullscreen() {
-    try {
-      await document.documentElement.requestFullscreen();
-    } catch (error) {
-      console.error('Error requesting fullscreen:', error);
-      this.showNotification('Failed to enter fullscreen. Please try again.', 'error');
+      console.error('Error showing violation warning:', error);
     }
   }
 
@@ -1907,22 +1496,14 @@ class ExamLockdown {
       overlay.className = 'exam-overlay';
       overlay.innerHTML = `
         <div class="exam-overlay-content setup-content">
-          <div class="exam-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-              <polyline points="10 9 9 9 8 9"></polyline>
-            </svg>
-          </div>
+          <div class="exam-icon">📝</div>
           <h2>Exam Lockdown</h2>
           <p>Please enter your name to begin the exam.</p>
           <div class="input-group">
             <input type="text" id="student-name-input" placeholder="Enter your full name" maxlength="100">
           </div>
           <div class="exam-rules">
-            <h3>Exam Rules:</h3>
+            <h3>📋 Exam Rules:</h3>
             <ul>
               <li>You must remain in fullscreen mode</li>
               <li>No tab switching or opening new windows</li>
@@ -1957,35 +1538,21 @@ class ExamLockdown {
   showSubmittedLockOverlay() {
     try {
       const overlay = document.createElement('div');
-      overlay.className = 'exam-overlay submitted-overlay';
+      overlay.className = 'exam-overlay';
       overlay.innerHTML = `
-        <div class="exam-overlay-content submitted-content">
-          <div class="exam-icon success-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-              <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
-          </div>
-          <h2>Exam Submitted Successfully</h2>
-          <p>This exam has been submitted and recorded.</p>
-          <div class="submission-details">
-            <div class="detail-item">
-              <strong>Student:</strong> ${this.studentName || 'Unknown'}
-            </div>
-            <div class="detail-item">
-              <strong>Time:</strong> ${new Date().toLocaleString()}
-            </div>
-            <div class="detail-item">
-              <strong>Status:</strong> <span class="status-completed">Completed</span>
+        <div class="exam-overlay-content warning-content">
+          <div class="exam-icon">⏰</div>
+          <h2>Exam Already Submitted</h2>
+          <p>This exam has already been submitted. You must wait 60 minutes before retaking it.</p>
+          <div class="countdown-container">
+            <div class="countdown-timer" id="countdown-timer">--:--</div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progress-fill"></div>
             </div>
           </div>
-          <div class="submission-message">
-            <p>Your exam has been successfully submitted and will be reviewed by the instructor.</p>
-            <p>You may now close this window.</p>
-          </div>
-          <div class="submission-actions">
-            <button class="exam-button secondary-btn" onclick="window.close()">Close Window</button>
-            <button class="exam-button primary-btn" onclick="location.reload()">View Results</button>
+          <div class="continue-section" id="continue-section" style="display: none;">
+            <p>✅ You can now retake the exam!</p>
+            <button class="exam-button" onclick="location.reload()">Start New Exam</button>
           </div>
         </div>
       `;
@@ -1993,20 +1560,7 @@ class ExamLockdown {
       document.body.appendChild(overlay);
       this.currentOverlay = overlay;
 
-      // Prevent any further interaction with the exam
-      this.examSubmitted = true;
-      this.isExamStarted = false;
-      
-      // Log the successful submission
-      this.logViolation({
-        type: 'exam_submitted',
-        severity: 'info',
-        timestamp: new Date().toISOString(),
-        details: 'Exam submitted successfully',
-        studentName: this.studentName,
-        studentEmail: this.userEmail || '',
-        formUrl: window.location.href
-      });
+      this.startCountdown(3600);
     } catch (error) {
       console.error('Error showing submitted lock overlay:', error);
     }
@@ -2122,6 +1676,352 @@ class ExamLockdown {
     }
   }
 
+  setupKeyboardProtection() {
+    try {
+      const handleKeyDown = (e) => {
+        if (!this.isExamStarted || this.examSubmitted) return;
+
+        const key = e.key.toLowerCase();
+        const ctrl = e.ctrlKey || e.metaKey;
+        const alt = e.altKey;
+        const shift = e.shiftKey;
+
+        // Block dangerous combinations
+        const blockedCombinations = [
+          // Tab switching
+          { ctrl: true, key: 'tab' },
+          { ctrl: true, key: 'tab', shift: true },
+          { ctrl: true, key: 'pageup' },
+          { ctrl: true, key: 'pagedown' },
+          { ctrl: true, key: '1' },
+          { ctrl: true, key: '2' },
+          { ctrl: true, key: '3' },
+          { ctrl: true, key: '4' },
+          { ctrl: true, key: '5' },
+          { ctrl: true, key: '6' },
+          { ctrl: true, key: '7' },
+          { ctrl: true, key: '8' },
+          { ctrl: true, key: '9' },
+          
+          // Window management
+          { alt: true, key: 'tab' },
+          { alt: true, key: 'f4' },
+          { alt: true, key: 'escape' },
+          { alt: true, key: 'space' },
+          { alt: true, key: 'enter' },
+          
+          // System shortcuts
+          { ctrl: true, key: 'escape' },
+          { ctrl: true, key: 'w' },
+          { ctrl: true, key: 'n' },
+          { ctrl: true, key: 't' },
+          { ctrl: true, key: 'shift', key: 't' },
+          { ctrl: true, key: 'shift', key: 'w' },
+          { ctrl: true, key: 'shift', key: 'n' },
+          
+          // Function keys (F1-F12)
+          { key: 'f1' }, { key: 'f2' }, { key: 'f3' }, { key: 'f4' },
+          { key: 'f5' }, { key: 'f6' }, { key: 'f7' }, { key: 'f8' },
+          { key: 'f9' }, { key: 'f10' }, { key: 'f11' }, { key: 'f12' },
+          
+          // Developer tools
+          { ctrl: true, key: 'shift', key: 'i' },
+          { ctrl: true, key: 'shift', key: 'j' },
+          { ctrl: true, key: 'shift', key: 'c' },
+          { ctrl: true, key: 'shift', key: 'k' },
+          { ctrl: true, key: 'shift', key: 'o' },
+          { ctrl: true, key: 'shift', key: 's' },
+          { ctrl: true, key: 'shift', key: 'p' },
+          { ctrl: true, key: 'shift', key: 'u' },
+          { ctrl: true, key: 'shift', key: 'a' },
+          { ctrl: true, key: 'shift', key: 'm' },
+          { ctrl: true, key: 'shift', key: 'd' },
+          { ctrl: true, key: 'shift', key: 'e' },
+          { ctrl: true, key: 'shift', key: 'v' },
+          { ctrl: true, key: 'shift', key: 'y' },
+          { ctrl: true, key: 'shift', key: 'z' },
+          
+          // Pause/Break key
+          { key: 'pause' },
+          { key: 'break' },
+          
+          // Escape key (for dialog dismissal)
+          { key: 'escape' },
+          
+          // Windows key
+          { key: 'meta' },
+          { meta: true, key: 'tab' },
+          
+          // Application key
+          { key: 'apps' },
+          
+          // Print screen
+          { key: 'printscreen' },
+          { key: 'prtscr' },
+          { key: 'prtsc' },
+          
+          // Scroll lock
+          { key: 'scrolllock' },
+          { key: 'scroll' },
+          
+          // Insert
+          { key: 'insert' },
+          { key: 'ins' },
+          
+          // Delete
+          { key: 'delete' },
+          { key: 'del' },
+          
+          // Home/End
+          { key: 'home' },
+          { key: 'end' },
+          
+          // Arrow keys (when combined with modifiers)
+          { ctrl: true, key: 'arrowup' },
+          { ctrl: true, key: 'arrowdown' },
+          { ctrl: true, key: 'arrowleft' },
+          { ctrl: true, key: 'arrowright' },
+          { alt: true, key: 'arrowup' },
+          { alt: true, key: 'arrowdown' },
+          { alt: true, key: 'arrowleft' },
+          { alt: true, key: 'arrowright' },
+        ];
+
+        // Check if current key combination should be blocked
+        const isBlocked = blockedCombinations.some(combo => {
+          const ctrlMatch = !combo.ctrl || ctrl;
+          const altMatch = !combo.alt || alt;
+          const shiftMatch = !combo.shift || shift;
+          const metaMatch = !combo.meta || e.metaKey;
+          const keyMatch = combo.key === key;
+          
+          return ctrlMatch && altMatch && shiftMatch && metaMatch && keyMatch;
+        });
+
+        if (isBlocked) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          
+          this.handleViolation('keyboard');
+          return false;
+        }
+
+        // Allow only basic input keys for form fields
+        const allowedKeys = [
+          'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+          'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+          '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+          'backspace', 'delete', 'tab', 'enter', 'space',
+          'arrowleft', 'arrowright', 'arrowup', 'arrowdown',
+          'home', 'end', 'pageup', 'pagedown'
+        ];
+
+        // Allow basic typing in input fields
+        const isInputField = e.target.tagName === 'INPUT' || 
+                           e.target.tagName === 'TEXTAREA' || 
+                           e.target.contentEditable === 'true';
+
+        if (!isInputField && !allowedKeys.includes(key)) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          
+          this.handleViolation('keyboard');
+          return false;
+        }
+      };
+
+      const handleKeyUp = (e) => {
+        if (!this.isExamStarted || this.examSubmitted) return;
+
+        // Additional monitoring for key release events
+        const key = e.key.toLowerCase();
+        const suspiciousKeys = ['tab', 'escape', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12'];
+        
+        if (suspiciousKeys.includes(key)) {
+          this.handleViolation('keyboard');
+        }
+      };
+
+      const handleContextMenu = (e) => {
+        if (!this.isExamStarted || this.examSubmitted) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        
+        this.handleViolation('keyboard');
+        return false;
+      };
+
+      const handleCopy = (e) => {
+        if (!this.isExamStarted || this.examSubmitted) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        
+        this.handleViolation('keyboard');
+        return false;
+      };
+
+      const handlePaste = (e) => {
+        if (!this.isExamStarted || this.examSubmitted) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        
+        this.handleViolation('keyboard');
+        return false;
+      };
+
+      const handleCut = (e) => {
+        if (!this.isExamStarted || this.examSubmitted) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        
+        this.handleViolation('keyboard');
+        return false;
+      };
+
+      // Add all event listeners
+      document.addEventListener('keydown', handleKeyDown, true);
+      document.addEventListener('keyup', handleKeyUp, true);
+      document.addEventListener('contextmenu', handleContextMenu, true);
+      document.addEventListener('copy', handleCopy, true);
+      document.addEventListener('paste', handlePaste, true);
+      document.addEventListener('cut', handleCut, true);
+
+      // Additional mouse protection
+      const handleMouseUp = (e) => {
+        if (!this.isExamStarted || this.examSubmitted) return;
+        
+        // Check if right-click was attempted
+        if (e.button === 2) {
+          this.handleViolation('keyboard');
+        }
+      };
+
+      const handleAuxClick = (e) => {
+        if (!this.isExamStarted || this.examSubmitted) return;
+        
+        // Block middle-click and other auxiliary clicks
+        if (e.button !== 0) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          
+          this.handleViolation('keyboard');
+          return false;
+        }
+      };
+
+      // Window focus/blur protection
+      const handleWindowBlur = (e) => {
+        if (!this.isExamStarted || this.examSubmitted) return;
+        
+        // Small delay to avoid false positives during legitimate interactions
+        setTimeout(() => {
+          if (document.hidden || !document.hasFocus()) {
+            this.handleViolation('visibilitychange');
+          }
+        }, 100);
+      };
+
+      const handleWindowFocus = (e) => {
+        if (!this.isExamStarted || this.examSubmitted) return;
+        
+        // Check if devtools might be open (window size changes)
+        setTimeout(() => {
+          const outerWidth = window.outerWidth;
+          const outerHeight = window.outerHeight;
+          const innerWidth = window.innerWidth;
+          const innerHeight = window.innerHeight;
+          
+          // If there's a significant difference, devtools might be open
+          if (outerWidth - innerWidth > 200 || outerHeight - innerHeight > 200) {
+            this.handleViolation('devtools');
+          }
+        }, 200);
+        
+        // Log when window regains focus (might indicate switching back)
+        if (this.isFullscreen) {
+          // User returned to fullscreen window
+          this.isReturningToFullscreen = true;
+          setTimeout(() => {
+            this.isReturningToFullscreen = false;
+          }, 1000);
+        }
+      };
+
+      const handleVisibilityChange = (e) => {
+        if (!this.isExamStarted || this.examSubmitted) return;
+        
+        if (document.hidden) {
+          this.handleViolation('visibilitychange');
+        }
+      };
+
+      // DevTools detection
+      const checkDevTools = () => {
+        if (!this.isExamStarted || this.examSubmitted) return;
+        
+        // Method 1: Check if devtools is open by looking at console
+        const devtools = /./;
+        devtools.toString = () => {
+          this.handleViolation('devtools');
+          return 'devtools detection';
+        };
+        
+        // Method 2: Check window dimensions
+        const threshold = 160;
+        if (window.outerHeight - window.innerHeight > threshold || 
+            window.outerWidth - window.innerWidth > threshold) {
+          this.handleViolation('devtools');
+        }
+      };
+
+      // Check for devtools periodically
+      const devtoolsCheckInterval = setInterval(() => {
+        checkDevTools();
+      }, 1000);
+
+      // Store cleanup functions
+      this.eventListeners.push(() => {
+        clearInterval(devtoolsCheckInterval);
+      });
+
+      // Add mouse and window event listeners
+      document.addEventListener('mouseup', handleMouseUp, true);
+      document.addEventListener('auxclick', handleAuxClick, true);
+      window.addEventListener('blur', handleWindowBlur, true);
+      window.addEventListener('focus', handleWindowFocus, true);
+      document.addEventListener('visibilitychange', handleVisibilityChange, true);
+
+      // Store cleanup functions
+      this.eventListeners.push(() => {
+        document.removeEventListener('keydown', handleKeyDown, true);
+        document.removeEventListener('keyup', handleKeyUp, true);
+        document.removeEventListener('contextmenu', handleContextMenu, true);
+        document.removeEventListener('copy', handleCopy, true);
+        document.removeEventListener('paste', handlePaste, true);
+        document.removeEventListener('cut', handleCut, true);
+        document.removeEventListener('mouseup', handleMouseUp, true);
+        document.removeEventListener('auxclick', handleAuxClick, true);
+        window.removeEventListener('blur', handleWindowBlur, true);
+        window.removeEventListener('focus', handleWindowFocus, true);
+        document.removeEventListener('visibilitychange', handleVisibilityChange, true);
+      });
+
+    } catch (error) {
+      console.error('Error setting up keyboard protection:', error);
+    }
+  }
+
   showFullscreenWarning() {
     try {
       if (this.currentOverlay) return;
@@ -2130,35 +2030,16 @@ class ExamLockdown {
       overlay.className = 'exam-overlay';
       overlay.innerHTML = `
         <div class="exam-overlay-content warning-content">
-          <div class="exam-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-          </div>
+          <div class="exam-icon">⚠️</div>
           <h2>Fullscreen Required</h2>
           <p>You must remain in fullscreen mode to continue the exam.</p>
           <p>Please press F11 or click the button below to re-enter fullscreen.</p>
-          <button class="exam-button" id="fullscreen-enter-btn">Enter Fullscreen</button>
+          <button class="exam-button" onclick="document.documentElement.requestFullscreen()">Enter Fullscreen</button>
         </div>
       `;
 
       document.body.appendChild(overlay);
       this.currentOverlay = overlay;
-
-      // Add proper event listener for fullscreen button
-      const fullscreenBtn = document.getElementById('fullscreen-enter-btn');
-      if (fullscreenBtn) {
-        fullscreenBtn.addEventListener('click', async () => {
-          try {
-            await document.documentElement.requestFullscreen();
-          } catch (error) {
-            console.error('Error requesting fullscreen:', error);
-            this.showNotification('Failed to enter fullscreen. Please try again.', 'error');
-          }
-        });
-      }
     } catch (error) {
       console.error('Error showing fullscreen warning:', error);
     }
@@ -2233,16 +2114,10 @@ class ExamLockdown {
           }, true);
 
           form.addEventListener('click', (e) => {
-            const submitButton = e.target.closest('button[type="submit"], div[role="button"][aria-label*="Submit"], div[role="button"][data-tooltip*="Submit"], span[data-tooltip*="Submit"]');
-            const nextButton = e.target.closest('div[role="button"][aria-label*="Next"], div[role="button"][data-tooltip*="Next"], span[data-tooltip*="Next"]');
-            
+            const submitButton = e.target.closest('button[type="submit"], div[role="button"][aria-label*="Submit"]');
             if (submitButton) {
               this.submissionInProgress = true;
               setTimeout(() => { this.submissionInProgress = false; }, 5000);
-            } else if (nextButton) {
-              // Handle Next button clicks for multi-section forms
-              console.log('[ExamLockdown] Next button clicked, maintaining exam state');
-              // Don't set submissionInProgress for navigation buttons
             }
           }, true);
         }
