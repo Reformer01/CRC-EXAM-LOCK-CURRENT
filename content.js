@@ -767,12 +767,13 @@ class ExamLockdown {
   async logViolation(violationData) {
     // Store violation locally regardless of webhook status
     try {
-      const violations = await this.getStorage(['violations']) || { violations: [] };
-      violations.violations.push({
+      const stored = await this.getStorage(['violations']);
+      const violations = (stored && stored.violations) ? stored.violations : [];
+      violations.push({
         ...violationData,
         timestamp: new Date().toISOString()
       });
-      await this.setStorage({ violations: violations.violations.slice(-100) }); // Keep last 100 violations
+      await this.setStorage({ violations: violations.slice(-100) }); // Keep last 100 violations
     } catch (err) {
       console.warn('Failed to store violation locally:', err);
     }
@@ -869,6 +870,7 @@ class ExamLockdown {
       // Add auto-dismiss after 5 seconds
       const autoDismiss = setTimeout(() => {
         this.removeCurrentOverlay();
+        this.checkAndRestoreFullscreen();
       }, 5000);
 
       // Add click handler for acknowledgment button
@@ -877,6 +879,7 @@ class ExamLockdown {
         ackBtn.addEventListener('click', () => {
           clearTimeout(autoDismiss);
           this.removeCurrentOverlay();
+          this.checkAndRestoreFullscreen();
         });
       }
 
@@ -886,6 +889,26 @@ class ExamLockdown {
       console.error('Error showing violation warning overlay:', error);
       // Fallback to notification if overlay fails
       this.showNotification(`Warning: ${violationType} detected!`, 'warning');
+    }
+  }
+
+  checkAndRestoreFullscreen() {
+    try {
+      if (!document.fullscreenElement && this.isExamStarted && !this.examSubmitted) {
+        console.log('[ExamLockdown] Restoring fullscreen after violation');
+        this.requestFullscreen();
+      }
+    } catch (error) {
+      console.error('Error checking/restoring fullscreen:', error);
+    }
+  }
+
+  async requestFullscreen() {
+    try {
+      await document.documentElement.requestFullscreen();
+    } catch (error) {
+      console.error('Error requesting fullscreen:', error);
+      this.showNotification('Failed to enter fullscreen. Please try again.', 'error');
     }
   }
 
@@ -1518,12 +1541,13 @@ class ExamLockdown {
   async logViolation(violationData) {
     // Store violation locally regardless of webhook status
     try {
-      const violations = await this.getStorage(['violations']) || { violations: [] };
-      violations.violations.push({
+      const stored = await this.getStorage(['violations']);
+      const violations = (stored && stored.violations) ? stored.violations : [];
+      violations.push({
         ...violationData,
         timestamp: new Date().toISOString()
       });
-      await this.setStorage({ violations: violations.violations.slice(-100) }); // Keep last 100 violations
+      await this.setStorage({ violations: violations.slice(-100) }); // Keep last 100 violations
     } catch (err) {
       console.warn('Failed to store violation locally:', err);
     }
@@ -1677,6 +1701,7 @@ class ExamLockdown {
       // Add auto-dismiss after 5 seconds
       const autoDismiss = setTimeout(() => {
         this.removeCurrentOverlay();
+        this.checkAndRestoreFullscreen();
       }, 5000);
 
       // Add click handler for acknowledgment button
@@ -1685,6 +1710,7 @@ class ExamLockdown {
         ackBtn.addEventListener('click', () => {
           clearTimeout(autoDismiss);
           this.removeCurrentOverlay();
+          this.checkAndRestoreFullscreen();
         });
       }
 
@@ -1694,6 +1720,26 @@ class ExamLockdown {
       console.error('Error showing violation warning overlay:', error);
       // Fallback to notification if overlay fails
       this.showNotification(`Warning: ${violationType} detected!`, 'warning');
+    }
+  }
+
+  checkAndRestoreFullscreen() {
+    try {
+      if (!document.fullscreenElement && this.isExamStarted && !this.examSubmitted) {
+        console.log('[ExamLockdown] Restoring fullscreen after violation');
+        this.requestFullscreen();
+      }
+    } catch (error) {
+      console.error('Error checking/restoring fullscreen:', error);
+    }
+  }
+
+  async requestFullscreen() {
+    try {
+      await document.documentElement.requestFullscreen();
+    } catch (error) {
+      console.error('Error requesting fullscreen:', error);
+      this.showNotification('Failed to enter fullscreen. Please try again.', 'error');
     }
   }
 
