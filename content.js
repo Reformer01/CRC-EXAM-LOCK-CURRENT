@@ -162,7 +162,7 @@ class ExamLockdown {
   setupEventListeners() {
     try {
       this.setupFullscreenListener();
-      this.setupFormSubmissionListener();
+      this.setupFormSubmissionListeners();
       this.setupUrlChangeListener();
       this.setupKeyboardProtection();
       this.initialized = true;
