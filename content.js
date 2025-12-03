@@ -1103,26 +1103,35 @@ class ExamLockdown {
   showSubmittedLockOverlay() {
     try {
       const overlay = document.createElement('div');
-      overlay.className = 'exam-overlay';
+      overlay.className = 'exam-overlay submitted-overlay';
       overlay.innerHTML = `
-        <div class="exam-overlay-content warning-content">
-          <div class="exam-icon">
+        <div class="exam-overlay-content submitted-content">
+          <div class="exam-icon success-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
             </svg>
           </div>
-          <h2>Exam Already Submitted</h2>
-          <p>This exam has already been submitted. You must wait 60 minutes before retaking it.</p>
-          <div class="countdown-container">
-            <div class="countdown-timer" id="countdown-timer">--:--</div>
-            <div class="progress-bar">
-              <div class="progress-fill" id="progress-fill"></div>
+          <h2>Exam Submitted Successfully</h2>
+          <p>This exam has been submitted and recorded.</p>
+          <div class="submission-details">
+            <div class="detail-item">
+              <strong>Student:</strong> ${this.studentName || 'Unknown'}
+            </div>
+            <div class="detail-item">
+              <strong>Time:</strong> ${new Date().toLocaleString()}
+            </div>
+            <div class="detail-item">
+              <strong>Status:</strong> <span class="status-completed">Completed</span>
             </div>
           </div>
-          <div class="continue-section" id="continue-section" style="display: none;">
-            <p>You can now retake the exam!</p>
-            <button class="exam-button" onclick="location.reload()">Start New Exam</button>
+          <div class="submission-message">
+            <p>Your exam has been successfully submitted and will be reviewed by the instructor.</p>
+            <p>You may now close this window.</p>
+          </div>
+          <div class="submission-actions">
+            <button class="exam-button secondary-btn" onclick="window.close()">Close Window</button>
+            <button class="exam-button primary-btn" onclick="location.reload()">View Results</button>
           </div>
         </div>
       `;
@@ -1130,7 +1139,20 @@ class ExamLockdown {
       document.body.appendChild(overlay);
       this.currentOverlay = overlay;
 
-      this.startCountdown(3600);
+      // Prevent any further interaction with the exam
+      this.examSubmitted = true;
+      this.isExamStarted = false;
+      
+      // Log the successful submission
+      this.logViolation({
+        type: 'exam_submitted',
+        severity: 'info',
+        timestamp: new Date().toISOString(),
+        details: 'Exam submitted successfully',
+        studentName: this.studentName,
+        studentEmail: this.userEmail || '',
+        formUrl: window.location.href
+      });
     } catch (error) {
       console.error('Error showing submitted lock overlay:', error);
     }
@@ -1889,26 +1911,35 @@ class ExamLockdown {
   showSubmittedLockOverlay() {
     try {
       const overlay = document.createElement('div');
-      overlay.className = 'exam-overlay';
+      overlay.className = 'exam-overlay submitted-overlay';
       overlay.innerHTML = `
-        <div class="exam-overlay-content warning-content">
-          <div class="exam-icon">
+        <div class="exam-overlay-content submitted-content">
+          <div class="exam-icon success-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
             </svg>
           </div>
-          <h2>Exam Already Submitted</h2>
-          <p>This exam has already been submitted. You must wait 60 minutes before retaking it.</p>
-          <div class="countdown-container">
-            <div class="countdown-timer" id="countdown-timer">--:--</div>
-            <div class="progress-bar">
-              <div class="progress-fill" id="progress-fill"></div>
+          <h2>Exam Submitted Successfully</h2>
+          <p>This exam has been submitted and recorded.</p>
+          <div class="submission-details">
+            <div class="detail-item">
+              <strong>Student:</strong> ${this.studentName || 'Unknown'}
+            </div>
+            <div class="detail-item">
+              <strong>Time:</strong> ${new Date().toLocaleString()}
+            </div>
+            <div class="detail-item">
+              <strong>Status:</strong> <span class="status-completed">Completed</span>
             </div>
           </div>
-          <div class="continue-section" id="continue-section" style="display: none;">
-            <p>You can now retake the exam!</p>
-            <button class="exam-button" onclick="location.reload()">Start New Exam</button>
+          <div class="submission-message">
+            <p>Your exam has been successfully submitted and will be reviewed by the instructor.</p>
+            <p>You may now close this window.</p>
+          </div>
+          <div class="submission-actions">
+            <button class="exam-button secondary-btn" onclick="window.close()">Close Window</button>
+            <button class="exam-button primary-btn" onclick="location.reload()">View Results</button>
           </div>
         </div>
       `;
@@ -1916,7 +1947,20 @@ class ExamLockdown {
       document.body.appendChild(overlay);
       this.currentOverlay = overlay;
 
-      this.startCountdown(3600);
+      // Prevent any further interaction with the exam
+      this.examSubmitted = true;
+      this.isExamStarted = false;
+      
+      // Log the successful submission
+      this.logViolation({
+        type: 'exam_submitted',
+        severity: 'info',
+        timestamp: new Date().toISOString(),
+        details: 'Exam submitted successfully',
+        studentName: this.studentName,
+        studentEmail: this.userEmail || '',
+        formUrl: window.location.href
+      });
     } catch (error) {
       console.error('Error showing submitted lock overlay:', error);
     }
