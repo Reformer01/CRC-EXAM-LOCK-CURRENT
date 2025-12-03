@@ -828,6 +828,8 @@ class ExamLockdown {
 
   showViolationWarning(violationType) {
     try {
+      if (this.currentOverlay) return; // Don't show if another overlay is active
+
       const warningMessages = {
         'visibilitychange': '⚠️ Warning: Tab switching detected!',
         'window-blur': '⚠️ Warning: Window focus lost!',
@@ -840,9 +842,50 @@ class ExamLockdown {
       const message = warningMessages[violationType] || '⚠️ Warning: Suspicious activity detected!';
       const remainingViolations = this.config.maxViolations - this.violationCount;
 
+      const overlay = document.createElement('div');
+      overlay.className = 'exam-overlay violation-overlay';
+      overlay.innerHTML = `
+        <div class="exam-overlay-content violation-content">
+          <div class="exam-icon warning-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+          <h2>Violation Detected</h2>
+          <p>${message}</p>
+          <div class="violation-count">
+            <strong>Violations: ${this.violationCount} / ${this.config.maxViolations}</strong>
+          </div>
+          <p class="remaining-warnings">${remainingViolations} warnings remaining</p>
+          <button class="exam-button violation-ack-btn">I Understand</button>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+      this.currentOverlay = overlay;
+
+      // Add auto-dismiss after 5 seconds
+      const autoDismiss = setTimeout(() => {
+        this.removeCurrentOverlay();
+      }, 5000);
+
+      // Add click handler for acknowledgment button
+      const ackBtn = overlay.querySelector('.violation-ack-btn');
+      if (ackBtn) {
+        ackBtn.addEventListener('click', () => {
+          clearTimeout(autoDismiss);
+          this.removeCurrentOverlay();
+        });
+      }
+
+      // Also show notification for additional visibility
       this.showNotification(`${message} (${remainingViolations} warnings remaining)`, 'warning');
     } catch (error) {
-      console.error('Error showing violation warning:', error);
+      console.error('Error showing violation warning overlay:', error);
+      // Fallback to notification if overlay fails
+      this.showNotification(`Warning: ${violationType} detected!`, 'warning');
     }
   }
 
@@ -1571,6 +1614,8 @@ class ExamLockdown {
 
   showViolationWarning(violationType) {
     try {
+      if (this.currentOverlay) return; // Don't show if another overlay is active
+
       const warningMessages = {
         'visibilitychange': '⚠️ Warning: Tab switching detected!',
         'window-blur': '⚠️ Warning: Window focus lost!',
@@ -1583,9 +1628,50 @@ class ExamLockdown {
       const message = warningMessages[violationType] || '⚠️ Warning: Suspicious activity detected!';
       const remainingViolations = this.config.maxViolations - this.violationCount;
 
+      const overlay = document.createElement('div');
+      overlay.className = 'exam-overlay violation-overlay';
+      overlay.innerHTML = `
+        <div class="exam-overlay-content violation-content">
+          <div class="exam-icon warning-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+          <h2>Violation Detected</h2>
+          <p>${message}</p>
+          <div class="violation-count">
+            <strong>Violations: ${this.violationCount} / ${this.config.maxViolations}</strong>
+          </div>
+          <p class="remaining-warnings">${remainingViolations} warnings remaining</p>
+          <button class="exam-button violation-ack-btn">I Understand</button>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+      this.currentOverlay = overlay;
+
+      // Add auto-dismiss after 5 seconds
+      const autoDismiss = setTimeout(() => {
+        this.removeCurrentOverlay();
+      }, 5000);
+
+      // Add click handler for acknowledgment button
+      const ackBtn = overlay.querySelector('.violation-ack-btn');
+      if (ackBtn) {
+        ackBtn.addEventListener('click', () => {
+          clearTimeout(autoDismiss);
+          this.removeCurrentOverlay();
+        });
+      }
+
+      // Also show notification for additional visibility
       this.showNotification(`${message} (${remainingViolations} warnings remaining)`, 'warning');
     } catch (error) {
-      console.error('Error showing violation warning:', error);
+      console.error('Error showing violation warning overlay:', error);
+      // Fallback to notification if overlay fails
+      this.showNotification(`Warning: ${violationType} detected!`, 'warning');
     }
   }
 
