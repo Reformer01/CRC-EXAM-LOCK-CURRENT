@@ -1,0 +1,643 @@
+/* ============================================================
+   CRC Exam Lockdown — Premium Dark UI
+   Glassmorphism · Gradients · Micro-animations
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap');
+
+:root {
+  --crc-bg:             #0a0e1a;
+  --crc-card:           rgba(18, 24, 42, 0.85);
+  --crc-card-border:    rgba(99, 102, 241, 0.18);
+  --crc-glass:          rgba(255, 255, 255, 0.04);
+  --crc-text:           #e2e8f0;
+  --crc-text-dim:       #94a3b8;
+  --crc-text-bright:    #f8fafc;
+  --crc-accent:         #6366f1;
+  --crc-accent-glow:    rgba(99, 102, 241, 0.35);
+  --crc-success:        #10b981;
+  --crc-success-glow:   rgba(16, 185, 129, 0.25);
+  --crc-danger:         #ef4444;
+  --crc-danger-glow:    rgba(239, 68, 68, 0.3);
+  --crc-warn:           #f59e0b;
+  --crc-warn-glow:      rgba(245, 158, 11, 0.25);
+  --crc-orange:         #f97316;
+  --crc-radius:         16px;
+  --crc-font:           'Inter', system-ui, -apple-system, sans-serif;
+  --crc-mono:           'JetBrains Mono', 'Cascadia Code', monospace;
+}
+
+/* ==========================================================
+   FULL-SCREEN OVERLAY BACKDROP
+   ========================================================== */
+.crc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 30% 20%, rgba(99,102,241,0.12) 0%, transparent 60%),
+              radial-gradient(ellipse at 70% 80%, rgba(16,185,129,0.08) 0%, transparent 50%),
+              var(--crc-bg);
+  font-family: var(--crc-font);
+  animation: crc-fadeIn 0.4s ease-out;
+  overflow: hidden;
+}
+
+/* animated grid background */
+.crc-overlay::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background-image:
+    linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: crc-gridDrift 25s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes crc-gridDrift {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(60px, 60px); }
+}
+
+@keyframes crc-fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ==========================================================
+   GLASSMORPHISM CARD
+   ========================================================== */
+.crc-card {
+  position: relative;
+  background: var(--crc-card);
+  border: 1px solid var(--crc-card-border);
+  border-radius: 24px;
+  padding: 48px 40px 40px;
+  max-width: 480px;
+  width: 92%;
+  text-align: center;
+  backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.04),
+    0 8px 40px rgba(0,0,0,0.45),
+    0 0 80px var(--crc-accent-glow);
+  animation: crc-cardEnter 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes crc-cardEnter {
+  from { transform: translateY(30px) scale(0.96); opacity: 0; }
+  to   { transform: translateY(0) scale(1);       opacity: 1; }
+}
+
+/* glowing top accent line */
+.crc-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 20%; right: 20%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--crc-accent), transparent);
+  border-radius: 0 0 4px 4px;
+}
+
+/* ---------- Card icon circles ---------- */
+.crc-card-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+  font-size: 32px;
+  position: relative;
+  z-index: 1;
+}
+
+.crc-card-icon--blue {
+  background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(99,102,241,0.05));
+  box-shadow: 0 0 30px var(--crc-accent-glow);
+  border: 1px solid rgba(99,102,241,0.25);
+}
+
+.crc-card-icon--red {
+  background: linear-gradient(135deg, rgba(239,68,68,0.2), rgba(239,68,68,0.05));
+  box-shadow: 0 0 30px var(--crc-danger-glow);
+  border: 1px solid rgba(239,68,68,0.25);
+  animation: crc-dangerPulse 2s ease-in-out infinite;
+}
+
+.crc-card-icon--green {
+  background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.05));
+  box-shadow: 0 0 30px var(--crc-success-glow);
+  border: 1px solid rgba(16,185,129,0.25);
+}
+
+.crc-card-icon--amber {
+  background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.05));
+  box-shadow: 0 0 30px var(--crc-warn-glow);
+  border: 1px solid rgba(245,158,11,0.25);
+}
+
+@keyframes crc-dangerPulse {
+  0%, 100% { box-shadow: 0 0 20px var(--crc-danger-glow); }
+  50%      { box-shadow: 0 0 40px var(--crc-danger-glow), 0 0 60px rgba(239,68,68,0.1); }
+}
+
+/* ---------- Typography ---------- */
+.crc-card h2 {
+  margin: 0 0 8px;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--crc-text-bright);
+  letter-spacing: -0.025em;
+}
+
+.crc-card p {
+  margin: 0 0 28px;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--crc-text-dim);
+}
+
+.crc-card p strong {
+  color: var(--crc-text);
+  font-weight: 600;
+}
+
+/* ==========================================================
+   FORM INPUT
+   ========================================================== */
+.crc-input {
+  width: 100%;
+  padding: 14px 18px;
+  background: var(--crc-glass);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  font-size: 15px;
+  font-family: var(--crc-font);
+  color: var(--crc-text-bright);
+  outline: none;
+  transition: all 0.25s ease;
+  box-sizing: border-box;
+  margin-bottom: 18px;
+}
+
+.crc-input:focus {
+  border-color: var(--crc-accent);
+  background: rgba(99,102,241,0.06);
+  box-shadow: 0 0 0 4px var(--crc-accent-glow), 0 0 20px rgba(99,102,241,0.08);
+}
+
+.crc-input::placeholder {
+  color: #64748b;
+}
+
+.crc-input[type="email"] {
+  color: var(--crc-text-bright);
+}
+
+.crc-input[type="email"]::placeholder {
+  color: #64748b;
+}
+
+.crc-input[type="email"] + .crc-input,
+.crc-input[type="email"] + select.crc-input {
+  color: var(--crc-text-bright);
+  background: var(--crc-glass);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+.crc-input[type="email"] + select.crc-input option {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* ==========================================================
+   BUTTONS
+   ========================================================== */
+.crc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 32px;
+  border: none;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--crc-font);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.crc-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.crc-btn:active {
+  transform: scale(0.96);
+}
+
+.crc-btn--primary {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #ffffff;
+  box-shadow: 0 4px 20px var(--crc-accent-glow), 0 0 40px rgba(99,102,241,0.1);
+}
+
+.crc-btn--primary:hover {
+  background: linear-gradient(135deg, #818cf8, #6366f1);
+  box-shadow: 0 6px 30px var(--crc-accent-glow), 0 0 60px rgba(99,102,241,0.15);
+  transform: translateY(-1px);
+}
+
+.crc-btn--primary:disabled {
+  background: rgba(99,102,241,0.25);
+  color: rgba(255,255,255,0.4);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.crc-btn--danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #ffffff;
+  box-shadow: 0 4px 20px var(--crc-danger-glow);
+}
+
+.crc-btn--danger:hover {
+  background: linear-gradient(135deg, #f87171, #ef4444);
+  transform: translateY(-1px);
+}
+
+.crc-btn--warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  box-shadow: 0 4px 20px var(--crc-warn-glow);
+}
+
+.crc-btn--warning:hover {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  transform: translateY(-1px);
+}
+
+.crc-btn--ghost {
+  background: var(--crc-glass);
+  color: var(--crc-text-dim);
+  padding: 10px 20px;
+  font-size: 13px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.crc-btn--ghost::before { display: none; }
+
+.crc-btn--ghost:hover {
+  color: var(--crc-text);
+  background: rgba(255,255,255,0.08);
+}
+
+/* ==========================================================
+   TIMER BADGE  (top-right, floating pill)
+   ========================================================== */
+.crc-timer {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 2147483646;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 22px;
+  border-radius: 14px;
+  font-family: var(--crc-mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  user-select: none;
+  pointer-events: none;
+  backdrop-filter: blur(16px) saturate(1.3);
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: all 0.5s ease;
+}
+
+.crc-timer--green {
+  background: linear-gradient(135deg, rgba(16,185,129,0.85), rgba(5,150,105,0.85));
+  box-shadow: 0 4px 24px var(--crc-success-glow), 0 0 50px rgba(16,185,129,0.08);
+}
+
+.crc-timer--yellow {
+  background: linear-gradient(135deg, rgba(245,158,11,0.85), rgba(217,119,6,0.85));
+  box-shadow: 0 4px 24px var(--crc-warn-glow);
+}
+
+.crc-timer--orange {
+  background: linear-gradient(135deg, rgba(249,115,22,0.85), rgba(234,88,12,0.85));
+  box-shadow: 0 4px 24px rgba(249,115,22,0.3);
+}
+
+.crc-timer--red {
+  background: linear-gradient(135deg, rgba(239,68,68,0.9), rgba(220,38,38,0.9));
+  box-shadow: 0 4px 24px var(--crc-danger-glow);
+}
+
+.crc-timer--pulse {
+  animation: crc-timerPulse 1s ease-in-out infinite;
+}
+
+@keyframes crc-timerPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 4px 24px var(--crc-danger-glow); }
+  50%      { opacity: 0.6; box-shadow: 0 4px 40px var(--crc-danger-glow), 0 0 60px rgba(239,68,68,0.2); }
+}
+
+.crc-timer-icon {
+  font-size: 22px;
+}
+
+/* ==========================================================
+   VIOLATION COUNTER BADGE  (top-left)
+   ========================================================== */
+.crc-violation-badge {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  z-index: 2147483646;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-family: var(--crc-font);
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  background: rgba(51,65,85,0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.3);
+  user-select: none;
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+.crc-violation-badge--warn {
+  background: rgba(245,158,11,0.75);
+  border-color: rgba(245,158,11,0.3);
+  box-shadow: 0 2px 16px var(--crc-warn-glow);
+}
+
+.crc-violation-badge--danger {
+  background: rgba(239,68,68,0.8);
+  border-color: rgba(239,68,68,0.3);
+  box-shadow: 0 2px 16px var(--crc-danger-glow);
+  animation: crc-badgePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes crc-badgePulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.05); }
+}
+
+/* ==========================================================
+   TOAST NOTIFICATIONS  (slide in from right)
+   ========================================================== */
+.crc-toast {
+  position: fixed;
+  top: 80px;
+  right: 18px;
+  z-index: 2147483646;
+  max-width: 380px;
+  padding: 16px 22px;
+  border-radius: 14px;
+  font-family: var(--crc-font);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: #ffffff;
+  backdrop-filter: blur(16px) saturate(1.3);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  animation: crc-toastIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.crc-toast__msg {
+  font-weight: 600;
+}
+
+.crc-toast__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.crc-toast__btn {
+  appearance: none;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.15);
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+.crc-toast__btn:hover {
+  background: rgba(255,255,255,0.25);
+  border-color: rgba(255,255,255,0.28);
+  transform: translateY(-1px);
+}
+
+.crc-toast__btn:active {
+  transform: translateY(0);
+}
+
+@keyframes crc-toastIn {
+  from { transform: translateX(120%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+.crc-toast--warning {
+  background: linear-gradient(135deg, rgba(245,158,11,0.9), rgba(217,119,6,0.9));
+}
+
+.crc-toast--error {
+  background: linear-gradient(135deg, rgba(239,68,68,0.9), rgba(185,28,28,0.9));
+}
+
+.crc-toast--info {
+  background: linear-gradient(135deg, rgba(99,102,241,0.9), rgba(79,70,229,0.9));
+}
+
+.crc-toast--exit {
+  animation: crc-toastOut 0.35s ease-in forwards;
+}
+
+@keyframes crc-toastOut {
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(120%); opacity: 0; }
+}
+
+/* ==========================================================
+   FULLSCREEN RE-ENTRY BANNER
+   ========================================================== */
+.crc-fs-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 2147483646;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 14px 20px;
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+  background: linear-gradient(135deg, rgba(239,68,68,0.95), rgba(220,38,38,0.95));
+  backdrop-filter: blur(8px);
+  font-family: var(--crc-font);
+  animation: crc-fadeIn 0.3s ease-out;
+  box-shadow: 0 4px 20px rgba(239,68,68,0.4);
+}
+
+.crc-fs-banner__text {
+  flex: 1 1 260px;
+  min-width: 220px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.crc-fs-banner__btn {
+  flex: 0 0 auto;
+  padding: 8px 18px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.15);
+  color: #ffffff;
+  font-family: var(--crc-font);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.crc-fs-banner__btn:hover {
+  background: rgba(255,255,255,0.3);
+  border-color: rgba(255,255,255,0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* ==========================================================
+   SCHOOL BRANDING
+   ========================================================== */
+.crc-brand {
+  margin-top: 32px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(99,102,241,0.35);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* ==========================================================
+   ERROR TEXT
+   ========================================================== */
+.crc-error {
+  color: var(--crc-danger);
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: -10px;
+  margin-bottom: 14px;
+}
+
+/* ==========================================================
+   INFO DETAIL  (used in lockout / submitted overlays)
+   ========================================================== */
+.crc-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--crc-glass);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.04);
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.crc-detail-row__label {
+  color: var(--crc-text-dim);
+  font-weight: 500;
+}
+
+.crc-detail-row__value {
+  color: var(--crc-text-bright);
+  font-weight: 700;
+}
+
+/* ==========================================================
+   RULES LIST  (setup overlay)
+   ========================================================== */
+.crc-rules {
+  text-align: left;
+  margin: 0 auto 24px;
+  padding: 0;
+  list-style: none;
+  max-width: 340px;
+}
+
+.crc-rules li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--crc-text-dim);
+  line-height: 1.45;
+}
+
+.crc-rules li .crc-rule-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  background: rgba(99,102,241,0.1);
+  border: 1px solid rgba(99,102,241,0.15);
+}
+
+/* ==========================================================
+   TIME WARNING BANNER  (full-width, top)
+   ========================================================== */
+.crc-time-warning {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 2147483645;
+  padding: 12px;
+  text-align: center;
+  font-family: var(--crc-font);
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  animation: crc-fadeIn 0.3s ease-out;
+  backdrop-filter: blur(8px);
+}
+
+.crc-time-warning--amber  { background: rgba(245,158,11,0.9); }
+.crc-time-warning--orange { background: rgba(249,115,22,0.9); }
+.crc-time-warning--red    { background: rgba(239,68,68,0.9); }

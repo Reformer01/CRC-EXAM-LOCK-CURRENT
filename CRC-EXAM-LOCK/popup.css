@@ -1,0 +1,200 @@
+/* ============================================================
+   CRC Exam Lockdown — Popup Dark Theme
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap');
+
+:root {
+  --pop-bg:       #0c1021;
+  --pop-card:     rgba(18, 24, 42, 0.9);
+  --pop-border:   rgba(99,102,241,0.15);
+  --pop-text:     #e2e8f0;
+  --pop-dim:      #64748b;
+  --pop-accent:   #6366f1;
+  --pop-success:  #10b981;
+  --pop-idle:     #475569;
+  --pop-radius:   14px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 320px;
+  min-height: 200px;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: radial-gradient(ellipse at 30% 10%, rgba(99,102,241,0.08), transparent 60%),
+              var(--pop-bg);
+  color: var(--pop-text);
+  padding: 20px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Header ---------- */
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.popup-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.popup-logo__icon {
+  font-size: 28px;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(99,102,241,0.05));
+  border-radius: 12px;
+  border: 1px solid rgba(99,102,241,0.2);
+}
+
+.popup-logo__title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #f8fafc;
+}
+
+.popup-logo__tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--pop-dim);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+/* ---------- Status dot ---------- */
+.popup-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.popup-dot--idle {
+  background: var(--pop-idle);
+  box-shadow: 0 0 6px rgba(71,85,105,0.4);
+}
+
+.popup-dot--active {
+  background: var(--pop-success);
+  box-shadow: 0 0 8px rgba(16,185,129,0.5);
+  animation: popup-pulse 2s ease-in-out infinite;
+}
+
+@keyframes popup-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(16,185,129,0.4); }
+  50%      { box-shadow: 0 0 14px rgba(16,185,129,0.6); }
+}
+
+/* ---------- Card ---------- */
+.popup-card {
+  background: var(--pop-card);
+  border: 1px solid var(--pop-border);
+  border-radius: var(--pop-radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  backdrop-filter: blur(12px);
+}
+
+.popup-card__label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--pop-dim);
+  margin-bottom: 6px;
+}
+
+.popup-card__value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--pop-text);
+}
+
+/* ---------- Buttons / helper text ---------- */
+.popup-btn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(99,102,241,0.25);
+  background: linear-gradient(135deg, rgba(99,102,241,0.22), rgba(99,102,241,0.08));
+  color: #f8fafc;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.popup-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(99,102,241,0.45);
+}
+
+.popup-btn:active {
+  transform: translateY(0);
+}
+
+.popup-help {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(226,232,240,0.7);
+}
+
+/* ---------- Detail rows ---------- */
+.popup-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.popup-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+.popup-detail-row__label {
+  font-size: 12px;
+  color: var(--pop-dim);
+  font-weight: 500;
+}
+
+.popup-detail-row__value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pop-text);
+}
+
+.popup-mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+
+/* ---------- Footer ---------- */
+.popup-footer {
+  text-align: center;
+  padding-top: 8px;
+  font-size: 10px;
+  color: rgba(100,116,139,0.5);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 600;
+}

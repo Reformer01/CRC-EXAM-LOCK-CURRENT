@@ -11,7 +11,7 @@ const DEFAULT_CONFIG = {
   warningCountdown: 30,
   adminEmailGroup: "reformer.ejembi@iworldnetworks.net",
   adminWebhookUrl: "",
-  googleSheetsWebhookUrl: "https://script.google.com/macros/s/AKfycbxKQ6uSav6EqA97vRTao6ZnElUO_6MiaH0G9xLgqOeNMVVD-5RNUkF95X5FaVvFPwilcw/exec",
+  googleSheetsWebhookUrl: "", // Removed Google Sheets
   enableRemoteConfig: false,
   remoteConfigUrl: "",
   violationCooldowns: {
@@ -38,8 +38,100 @@ const DEFAULT_CONFIG = {
 
 let sessionStore = {};
 let sessionStoreLoaded = false;
+let ws = null;
 
 console.log(SW_LOG_PREFIX, 'Service worker initialized');
+
+// WebSocket connection for direct dashboard communication
+// Using fetch for Service Worker compatibility
+function connectWebSocket() {
+  // Service workers have limited WebSocket support in some Chrome versions
+  // We'll use periodic fetch requests as fallback
+  console.log(SW_LOG_PREFIX, 'WebSocket connection initialized (using fetch fallback for service worker compatibility)');
+  return;
+}
+
+function sendToDashboard(type, data) {
+  // Use fetch API to send data to dashboard server
+  const payload = {
+    type,
+    clientType: 'background',
+    ...data,
+    timestamp: Date.now()
+  };
+  
+  try {
+    // Allow overriding bridge URL via local extension storage:
+    // chrome.storage.local.set({ dashboardBridgeUrl: "http://localhost:8080/api/event" })
+    const send = (url) => {
+      // #region agent log
+      try {
+        fetch('http://127.0.0.1:7242/ingest/0053a6a1-2ea8-47f1-af0f-98db8c9243de', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'background.js:sendToDashboard',
+            message: 'Sending event to dashboard bridge',
+            data: { type, hasSessionId: Boolean(data && data.sessionId), url },
+            hypothesisId: 'H1',
+            runId: 'pre-fix',
+            timestamp: Date.now()
+          })
+        }).catch(() => {});
+      } catch (_) {}
+      // #endregion agent log
+
+      return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(error => {
+        console.warn(SW_LOG_PREFIX, 'Failed to send data to dashboard:', error.message);
+        // #region agent log
+        try {
+          fetch('http://127.0.0.1:7242/ingest/0053a6a1-2ea8-47f1-af0f-98db8c9243de', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              location: 'background.js:sendToDashboard.fetchCatch',
+              message: 'Error sending event to dashboard bridge',
+              data: { type, error: String(error && error.message) },
+              hypothesisId: 'H1',
+              runId: 'pre-fix',
+              timestamp: Date.now()
+            })
+          }).catch(() => {});
+        } catch (_) {}
+        // #endregion agent log
+      });
+    };
+    
+    if (chrome?.storage?.local) {
+      chrome.storage.local.get(['dashboardBridgeUrl'], (res) => {
+        const url = res?.dashboardBridgeUrl;
+        if (url) {
+          try { send(url); } catch (e) {}
+          return;
+        }
+
+        // Default: try 8080 first, then 8082 (common when 8080 is busy).
+        try { send('http://localhost:8080/api/event'); } catch (e) {}
+        try { send('http://localhost:8082/api/event'); } catch (e) {}
+      });
+    } else {
+      send('http://localhost:8080/api/event');
+    }
+  } catch (error) {
+    console.warn(SW_LOG_PREFIX, 'Error sending to dashboard:', error.message);
+  }
+}
+
+// Initialize WebSocket connection safely
+try {
+  connectWebSocket();
+} catch (error) {
+  console.warn(SW_LOG_PREFIX, 'Failed to initialize WebSocket fallback:', error);
+}
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   handleMessage(message, sender)
@@ -208,6 +300,19 @@ async function handleInitSession(data, fallbackUrl) {
     await persistSessionStore();
   }
 
+  try {
+    sendToDashboard('session_start', {
+      sessionId: session.sessionId,
+      studentName: session.studentName,
+      studentEmail: session.studentEmail,
+      formUrl,
+      startedAt: session.startedAt,
+      examSubmitted: Boolean(session.examSubmitted)
+    });
+  } catch (err) {
+    console.warn(SW_LOG_PREFIX, 'Failed to send session_start to dashboard:', err);
+  }
+
   return {
     success: true,
     sessionId: session.sessionId,
@@ -284,7 +389,7 @@ async function handleReportViolation(data, fallbackUrl) {
   sessionStore[formUrl] = session;
   await persistSessionStore();
 
-  await logViolationToGoogleSheets({
+  await logViolationToDashboard({
     studentName: session.studentName || 'Unknown',
     studentEmail: session.studentEmail || 'unknown@example.com',
     formUrl,
@@ -332,6 +437,19 @@ async function handleAutoSubmit(data, fallbackUrl) {
   sessionStore[formUrl] = session;
   await persistSessionStore();
 
+  try {
+    sendToDashboard('session_end', {
+      sessionId: session.sessionId,
+      studentName: session.studentName,
+      studentEmail: session.studentEmail,
+      formUrl,
+      violationCount: session.violationCount || 0,
+      autoSubmit: session.autoSubmit || null
+    });
+  } catch (err) {
+    console.warn(SW_LOG_PREFIX, 'Failed to send session_end to dashboard:', err);
+  }
+
   console.log(SW_LOG_PREFIX, 'Auto-submit recorded for session', session.sessionId);
   return { success: true, sessionId: session.sessionId };
 }
@@ -369,45 +487,7 @@ async function handleCheckClearStatus(data, fallbackUrl) {
       await persistSessionStore();
       return { success: true, clearStatus: { cleared: true, clearedAt: session.clearedAt } };
     }
-  } else {
-    try {
-      const cfg = await getConfig();
-      const webhook = cfg.googleSheetsWebhookUrl;
-      if (webhook) {
-        const payload = {
-          action: 'checkClearStatus',
-          sessionId: data.sessionId || session.sessionId,
-          studentEmail: data.studentEmail || session.studentEmail || ''
-        };
-
-        const { result: response } = await withRetry(() => fetch(webhook, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        }), { maxRetries: 3, initialDelay: 1000 });
-
-        const text = await response.text().catch(() => null);
-        let parsed = null;
-        try { parsed = text ? JSON.parse(text) : null; } catch (e) { parsed = null; }
-
-        const cleared = (parsed && (parsed.cleared === true || parsed.clearStatus?.cleared === true)) || false;
-        const clearedAt = (parsed && (parsed.clearedAt || parsed.clearStatus?.clearedAt)) || null;
-
-        if (cleared) {
-          session.violationCount = 0;
-          session.clearedAt = clearedAt || new Date().toISOString();
-          session.updatedAt = now;
-          session.violationHistory = [];
-          sessionStore[formUrl] = session;
-          await persistSessionStore();
-          return { success: true, clearStatus: { cleared: true, clearedAt: session.clearedAt, source: 'webhook' } };
-        }
-      }
-    } catch (err) {
-      console.warn(SW_LOG_PREFIX, 'Webhook clearance check failed', err);
-    }
   }
-
   return { success: true, clearStatus: null };
 }
 
@@ -538,58 +618,31 @@ function storageSet(items) {
   });
 }
 
-async function logViolationToGoogleSheets(violationData) {
+async function logViolationToDashboard(violationData) {
   try {
-    const config = await getConfig();
-    const webhookUrl = config.googleSheetsWebhookUrl;
-    
-    if (!webhookUrl) {
-      console.warn(SW_LOG_PREFIX, 'Google Sheets webhook URL not configured');
-      return;
-    }
-
     const payload = {
-      action: 'logViolation',
-      violationData: {
-        sessionId: violationData.sessionId || '',
-        studentName: violationData.studentName || 'Unknown',
-        studentEmail: violationData.studentEmail || 'unknown@example.com',
-        formUrl: violationData.formUrl || '',
-        violationType: violationData.violationType || 'unknown',
-        violationCount: Number(violationData.violationCount || 0),
+      type: 'violation',
+      sessionId: violationData.sessionId || '',
+      studentId: violationData.studentId || '',
+      studentName: violationData.studentName || 'Unknown',
+      studentEmail: violationData.studentEmail || 'unknown@example.com',
+      examId: violationData.examId || '',
+      violation: {
+        type: violationData.violationType || 'unknown',
         severity: getSeverityFromCount(Number(violationData.violationCount || 0)),
-        status: getStatusFromCount(Number(violationData.violationCount || 0)),
-        metadata: violationData.metadata || {},
-        ipAddress: violationData.ipAddress || '',
-        userAgent: violationData.userAgent || ''
-      }
+        description: `Violation: ${violationData.violationType || 'unknown'}`,
+        evidence: {
+          timestamp: Date.now()
+        }
+      },
+      violationCount: Number(violationData.violationCount || 0),
+      timestamp: Date.now()
     };
 
-    const { result: response } = await withRetry(
-      () => fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }),
-      { maxRetries: 3, initialDelay: 1000 }
-    );
-
-    const text = await response.text().catch(() => null);
-    if (!response.ok) {
-      console.error(SW_LOG_PREFIX, `Failed to log violation: HTTP ${response.status}`, { statusText: response.statusText, body: text });
-      return;
-    }
-
-    let result = null;
-    try {
-      result = text ? JSON.parse(text) : null;
-    } catch (err) {
-      console.warn(SW_LOG_PREFIX, 'Failed to parse webhook JSON response', err, 'raw:', text);
-    }
-
-    console.log(SW_LOG_PREFIX, 'Violation logged to Google Sheets', { parsed: result, raw: text });
+    sendToDashboard('violation', payload);
+    console.log(SW_LOG_PREFIX, 'Violation sent to dashboard', payload);
   } catch (error) {
-    console.error(SW_LOG_PREFIX, 'Failed to log violation to Google Sheets:', error);
+    console.error(SW_LOG_PREFIX, 'Failed to send violation to dashboard:', error);
   }
 }
 

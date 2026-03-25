@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "CKA Exam Lockdown",
+  "version": "1.0.0",
+  "description": "Exam proctoring extension for CKA — locks down Google Forms with a 2-hour timer and reports to Google Sheets",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://script.google.com/*",
+    "https://script.googleusercontent.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://docs.google.com/forms/d/*/viewform*",
+        "https://docs.google.com/forms/d/*/formResponse*",
+        "https://docs.google.com/forms/u/*/viewform*",
+        "https://docs.google.com/forms/u/*/formResponse*"
+      ],
+      "js": ["content.js"],
+      "css": ["overlay.css"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "CKA Exam Lockdown"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

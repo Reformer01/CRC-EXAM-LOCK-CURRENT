@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CRC Exam Lockdown</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="popup-header">
+    <div class="popup-logo">
+      <span class="popup-logo__icon">🛡️</span>
+      <div>
+        <h1 class="popup-logo__title">CRC Exam Lock</h1>
+        <span class="popup-logo__tag">Proctoring System</span>
+      </div>
+    </div>
+    <span id="popup-status-dot" class="popup-dot popup-dot--idle"></span>
+  </header>
+
+  <!-- Status card -->
+  <section id="popup-status" class="popup-card">
+    <div class="popup-card__label">Session</div>
+    <div id="popup-status-text" class="popup-card__value">Checking…</div>
+  </section>
+
+  <!-- Student / detail rows -->
+  <section id="popup-details" class="popup-details" style="display:none">
+    <div class="popup-detail-row">
+      <span class="popup-detail-row__label">Student</span>
+      <span id="popup-student" class="popup-detail-row__value">—</span>
+    </div>
+    <div class="popup-detail-row">
+      <span class="popup-detail-row__label">Session ID</span>
+      <span id="popup-session" class="popup-detail-row__value popup-mono">—</span>
+    </div>
+  </section>
+
+  <!-- Actions -->
+  <section class="popup-card">
+    <div class="popup-card__label">Tools</div>
+    <button id="popup-test-webhook" class="popup-btn" type="button">
+      Test Webhook
+    </button>
+    <div id="popup-test-webhook-status" class="popup-help" aria-live="polite"></div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="popup-footer">
+    <span>CRC • Exam Proctoring v2.0</span>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

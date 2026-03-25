@@ -1,0 +1,668 @@
+/* ============================================================
+   CKA Exam Lockdown — Premium Dark UI
+   Glassmorphism · Gradients · Micro-animations
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap');
+
+:root {
+  --cka-bg:             #0a0e1a;
+  --cka-card:           rgba(18, 24, 42, 0.85);
+  --cka-card-border:    rgba(99, 102, 241, 0.18);
+  --cka-glass:          rgba(255, 255, 255, 0.04);
+  --cka-text:           #e2e8f0;
+  --cka-text-dim:       #94a3b8;
+  --cka-text-bright:    #f8fafc;
+  --cka-accent:         #6366f1;
+  --cka-accent-glow:    rgba(99, 102, 241, 0.35);
+  --cka-success:        #10b981;
+  --cka-success-glow:   rgba(16, 185, 129, 0.25);
+  --cka-danger:         #ef4444;
+  --cka-danger-glow:    rgba(239, 68, 68, 0.3);
+  --cka-warn:           #f59e0b;
+  --cka-warn-glow:      rgba(245, 158, 11, 0.25);
+  --cka-orange:         #f97316;
+  --cka-radius:         16px;
+  --cka-font:           'Inter', system-ui, -apple-system, sans-serif;
+  --cka-mono:           'JetBrains Mono', 'Cascadia Code', monospace;
+}
+
+/* ==========================================================
+   FULL-SCREEN OVERLAY BACKDROP
+   ========================================================== */
+.cka-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 30% 20%, rgba(99,102,241,0.12) 0%, transparent 60%),
+              radial-gradient(ellipse at 70% 80%, rgba(16,185,129,0.08) 0%, transparent 50%),
+              var(--cka-bg);
+  font-family: var(--cka-font);
+  animation: cka-fadeIn 0.4s ease-out;
+  overflow: hidden;
+}
+
+/* animated grid background */
+.cka-overlay::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background-image:
+    linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: cka-gridDrift 25s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes cka-gridDrift {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(60px, 60px); }
+}
+
+@keyframes cka-fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ==========================================================
+   GLASSMORPHISM CARD
+   ========================================================== */
+.cka-card {
+  position: relative;
+  background: var(--cka-card);
+  border: 1px solid var(--cka-card-border);
+  border-radius: 24px;
+  padding: 48px 40px 40px;
+  max-width: 480px;
+  width: 92%;
+  text-align: center;
+  backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.04),
+    0 8px 40px rgba(0,0,0,0.45),
+    0 0 80px var(--cka-accent-glow);
+  animation: cka-cardEnter 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cka-cardEnter {
+  from { transform: translateY(30px) scale(0.96); opacity: 0; }
+  to   { transform: translateY(0) scale(1);       opacity: 1; }
+}
+
+/* glowing top accent line */
+.cka-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 20%; right: 20%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cka-accent), transparent);
+  border-radius: 0 0 4px 4px;
+}
+
+/* ---------- Card icon circles ---------- */
+.cka-card-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+  font-size: 32px;
+  position: relative;
+  z-index: 1;
+}
+
+.cka-card-icon--blue {
+  background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(99,102,241,0.05));
+  box-shadow: 0 0 30px var(--cka-accent-glow);
+  border: 1px solid rgba(99,102,241,0.25);
+}
+
+.cka-card-icon--red {
+  background: linear-gradient(135deg, rgba(239,68,68,0.2), rgba(239,68,68,0.05));
+  box-shadow: 0 0 30px var(--cka-danger-glow);
+  border: 1px solid rgba(239,68,68,0.25);
+  animation: cka-dangerPulse 2s ease-in-out infinite;
+}
+
+.cka-card-icon--green {
+  background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.05));
+  box-shadow: 0 0 30px var(--cka-success-glow);
+  border: 1px solid rgba(16,185,129,0.25);
+}
+
+.cka-card-icon--amber {
+  background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.05));
+  box-shadow: 0 0 30px var(--cka-warn-glow);
+  border: 1px solid rgba(245,158,11,0.25);
+}
+
+@keyframes cka-dangerPulse {
+  0%, 100% { box-shadow: 0 0 20px var(--cka-danger-glow); }
+  50%      { box-shadow: 0 0 40px var(--cka-danger-glow), 0 0 60px rgba(239,68,68,0.1); }
+}
+
+/* ---------- Typography ---------- */
+.cka-card h2 {
+  margin: 0 0 8px;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--cka-text-bright);
+  letter-spacing: -0.025em;
+}
+
+.cka-card p {
+  margin: 0 0 28px;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--cka-text-dim);
+}
+
+.cka-card p strong {
+  color: var(--cka-text);
+  font-weight: 600;
+}
+
+/* ==========================================================
+   FORM INPUT
+   ========================================================== */
+.cka-input {
+  width: 100%;
+  padding: 14px 18px;
+  background: var(--cka-glass);
+  border: 1.5px solid rgba(99,102,241,0.15);
+  border-radius: 12px;
+  font-size: 15px;
+  font-family: var(--cka-font);
+  color: var(--cka-text-bright);
+  outline: none;
+  transition: all 0.25s ease;
+  box-sizing: border-box;
+  margin-bottom: 18px;
+}
+
+.cka-input:focus {
+  border-color: var(--cka-accent);
+  background: rgba(99,102,241,0.06);
+  box-shadow: 0 0 0 4px var(--cka-accent-glow), 0 0 20px rgba(99,102,241,0.08);
+}
+
+.cka-input::placeholder {
+  color: #64748b;
+}
+
+/* ==========================================================
+   BUTTONS
+   ========================================================== */
+.cka-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 32px;
+  border: none;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--cka-font);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.cka-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.cka-btn:active {
+  transform: scale(0.96);
+}
+
+.cka-btn--primary {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #ffffff;
+  box-shadow: 0 4px 20px var(--cka-accent-glow), 0 0 40px rgba(99,102,241,0.1);
+}
+
+.cka-btn--primary:hover {
+  background: linear-gradient(135deg, #818cf8, #6366f1);
+  box-shadow: 0 6px 30px var(--cka-accent-glow), 0 0 60px rgba(99,102,241,0.15);
+  transform: translateY(-1px);
+}
+
+.cka-btn--primary:disabled {
+  background: rgba(99,102,241,0.25);
+  color: rgba(255,255,255,0.4);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.cka-btn--danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #ffffff;
+  box-shadow: 0 4px 20px var(--cka-danger-glow);
+}
+
+.cka-btn--danger:hover {
+  background: linear-gradient(135deg, #f87171, #ef4444);
+  transform: translateY(-1px);
+}
+
+.cka-btn--warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  box-shadow: 0 4px 20px var(--cka-warn-glow);
+}
+
+.cka-btn--warning:hover {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  transform: translateY(-1px);
+}
+
+.cka-btn--ghost {
+  background: var(--cka-glass);
+  color: var(--cka-text-dim);
+  padding: 10px 20px;
+  font-size: 13px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.cka-btn--ghost::before { display: none; }
+
+.cka-btn--ghost:hover {
+  color: var(--cka-text);
+  background: rgba(255,255,255,0.08);
+}
+
+/* ==========================================================
+   TIMER BADGE  (top-right, floating pill)
+   ========================================================== */
+.cka-timer {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 2147483646;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 22px;
+  border-radius: 14px;
+  font-family: var(--cka-mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  user-select: none;
+  pointer-events: none;
+  backdrop-filter: blur(16px) saturate(1.3);
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: all 0.5s ease;
+}
+
+.cka-timer--green {
+  background: linear-gradient(135deg, rgba(16,185,129,0.85), rgba(5,150,105,0.85));
+  box-shadow: 0 4px 24px var(--cka-success-glow), 0 0 50px rgba(16,185,129,0.08);
+}
+
+.cka-timer--yellow {
+  background: linear-gradient(135deg, rgba(245,158,11,0.85), rgba(217,119,6,0.85));
+  box-shadow: 0 4px 24px var(--cka-warn-glow);
+}
+
+.cka-timer--orange {
+  background: linear-gradient(135deg, rgba(249,115,22,0.85), rgba(234,88,12,0.85));
+  box-shadow: 0 4px 24px rgba(249,115,22,0.3);
+}
+
+.cka-timer--red {
+  background: linear-gradient(135deg, rgba(239,68,68,0.9), rgba(220,38,38,0.9));
+  box-shadow: 0 4px 24px var(--cka-danger-glow);
+}
+
+.cka-timer--pulse {
+  animation: cka-timerPulse 1s ease-in-out infinite;
+}
+
+@keyframes cka-timerPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 4px 24px var(--cka-danger-glow); }
+  50%      { opacity: 0.6; box-shadow: 0 4px 40px var(--cka-danger-glow), 0 0 60px rgba(239,68,68,0.2); }
+}
+
+.cka-timer-icon {
+  font-size: 22px;
+}
+
+/* ==========================================================
+   VIOLATION COUNTER BADGE  (top-left)
+   ========================================================== */
+.cka-violation-badge {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  z-index: 2147483646;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-family: var(--cka-font);
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  background: rgba(51,65,85,0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.3);
+  user-select: none;
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+.cka-violation-badge--warn {
+  background: rgba(245,158,11,0.75);
+  border-color: rgba(245,158,11,0.3);
+  box-shadow: 0 2px 16px var(--cka-warn-glow);
+}
+
+.cka-violation-badge--danger {
+  background: rgba(239,68,68,0.8);
+  border-color: rgba(239,68,68,0.3);
+  box-shadow: 0 2px 16px var(--cka-danger-glow);
+  animation: cka-badgePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes cka-badgePulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.05); }
+}
+
+/* ==========================================================
+   FULLSCREEN RE-ENTRY BANNER  (top center, slides down)
+   ========================================================== */
+.cka-fs-banner {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483646;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, rgba(239,68,68,0.92), rgba(185,28,28,0.92));
+  backdrop-filter: blur(16px);
+  border-radius: 0 0 16px 16px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-top: none;
+  box-shadow: 0 6px 30px var(--cka-danger-glow);
+  animation: cka-bannerSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--cka-font);
+}
+
+@keyframes cka-bannerSlide {
+  from { transform: translateX(-50%) translateY(-100%); }
+  to   { transform: translateX(-50%) translateY(0); }
+}
+
+.cka-fs-banner__text {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.cka-fs-banner__btn {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.2);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--cka-font);
+  cursor: pointer;
+  transition: background 0.2s;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+.cka-fs-banner__btn:hover {
+  background: rgba(255,255,255,0.35);
+}
+
+/* ==========================================================
+   TOAST NOTIFICATIONS  (slide in from right)
+   ========================================================== */
+.cka-toast {
+  position: fixed;
+  top: 80px;
+  right: 18px;
+  z-index: 2147483646;
+  max-width: 380px;
+  padding: 16px 22px;
+  border-radius: 14px;
+  font-family: var(--cka-font);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: #ffffff;
+  backdrop-filter: blur(16px) saturate(1.3);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  animation: cka-toastIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cka-toast__msg {
+  font-weight: 600;
+}
+
+.cka-toast__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.cka-toast__btn {
+  appearance: none;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.15);
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+.cka-toast__btn:hover {
+  background: rgba(255,255,255,0.25);
+  border-color: rgba(255,255,255,0.28);
+  transform: translateY(-1px);
+}
+
+.cka-toast__btn:active {
+  transform: translateY(0);
+}
+
+@keyframes cka-toastIn {
+  from { transform: translateX(120%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+.cka-toast--warning {
+  background: linear-gradient(135deg, rgba(245,158,11,0.9), rgba(217,119,6,0.9));
+}
+
+.cka-toast--error {
+  background: linear-gradient(135deg, rgba(239,68,68,0.9), rgba(185,28,28,0.9));
+}
+
+.cka-toast--info {
+  background: linear-gradient(135deg, rgba(99,102,241,0.9), rgba(79,70,229,0.9));
+}
+
+.cka-toast--exit {
+  animation: cka-toastOut 0.35s ease-in forwards;
+}
+
+@keyframes cka-toastOut {
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(120%); opacity: 0; }
+}
+
+/* ==========================================================
+   SCHOOL BRANDING
+   ========================================================== */
+.cka-brand {
+  margin-top: 32px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(99,102,241,0.35);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* ==========================================================
+   ERROR TEXT
+   ========================================================== */
+.cka-error {
+  color: var(--cka-danger);
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: -10px;
+  margin-bottom: 14px;
+}
+
+/* ==========================================================
+   INFO DETAIL  (used in lockout / submitted overlays)
+   ========================================================== */
+.cka-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--cka-glass);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.04);
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.cka-detail-row__label {
+  color: var(--cka-text-dim);
+  font-weight: 500;
+}
+
+.cka-detail-row__value {
+  color: var(--cka-text-bright);
+  font-weight: 700;
+}
+
+/* ==========================================================
+   RULES LIST  (setup overlay)
+   ========================================================== */
+.cka-rules {
+  text-align: left;
+  margin: 0 auto 24px;
+  padding: 0;
+  list-style: none;
+  max-width: 340px;
+}
+
+.cka-rules li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--cka-text-dim);
+  line-height: 1.45;
+}
+
+.cka-rules li .cka-rule-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  background: rgba(99,102,241,0.1);
+  border: 1px solid rgba(99,102,241,0.15);
+}
+
+/* ==========================================================
+   TIME WARNING BANNER  (full-width, top)
+   ========================================================== */
+.cka-time-warning {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 2147483645;
+  padding: 12px;
+  text-align: center;
+  font-family: var(--cka-font);
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  animation: cka-fadeIn 0.3s ease-out;
+  backdrop-filter: blur(8px);
+}
+
+.cka-time-warning--amber  { background: rgba(245,158,11,0.9); }
+.cka-time-warning--orange { background: rgba(249,115,22,0.9); }
+.cka-time-warning--red    { background: rgba(239,68,68,0.9);  }
+
+/* ==========================================================
+   FULLSCREEN RE-ENTRY BANNER
+   ========================================================== */
+.cka-fs-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 2147483646;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, rgba(239,68,68,0.95), rgba(220,38,38,0.95));
+  backdrop-filter: blur(8px);
+  font-family: var(--cka-font);
+  animation: cka-fadeIn 0.3s ease-out;
+  box-shadow: 0 4px 20px rgba(239,68,68,0.4);
+}
+
+.cka-fs-banner__text {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.cka-fs-banner__btn {
+  padding: 8px 18px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.15);
+  color: #ffffff;
+  font-family: var(--cka-font);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cka-fs-banner__btn:hover {
+  background: rgba(255,255,255,0.3);
+  border-color: rgba(255,255,255,0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
