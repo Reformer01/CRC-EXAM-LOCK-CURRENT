@@ -110,8 +110,15 @@
       /* whether we are in the middle of re-entering fullscreen */
       this.reenteringFS = false;
 
-      /* list of cleanup functions for event listeners */
-      this.cleanups = [];
+      /* focus check state for grace-period detection */
+      this.focusCheckTimer   = null;
+      this.isSubmitting       = false;
+      this.lastFocusLossAt    = 0;
+      this.lastBlurAt         = 0;
+
+      /* grace period before recording visibility/blur violations (ms) */
+      this.GRACE_PERIOD_MS    = 250;
+      this.RAPID_EVENT_WINDOW  = 2000;
 
       this.isResponsePage =
         location.pathname.includes('/formResponse') ||
@@ -545,20 +552,8 @@
         this.cleanups.push(() => target.removeEventListener(evt, fn, opts));
       };
 
-      /* ---- visibility / blur ---- */
-      on(document, 'visibilitychange', () => {
-        if (document.hidden && this.state.isStarted && !this.state.isLocked) {
-          this.recordViolation('tab_hidden', 'high',
-            'Tab was hidden (switched tabs or minimised).');
-        }
-      });
-
-      on(window, 'blur', () => {
-        if (this.state.isStarted && !this.state.isLocked && !this.reenteringFS) {
-          this.recordViolation('window_blur', 'high',
-            'Window lost focus.');
-        }
-      });
+      /* ---- visibility / blur with grace-period detection ---- */
+      this._setupGracePeriodMonitors(on);
 
       /* ---- keyboard shortcuts ---- */
       on(document, 'keydown', e => {
@@ -653,6 +648,102 @@
           e.returnValue = '';
         }
       });
+    }
+
+    /* --------------------------------------------------
+       GRACE-PERIOD MONITORS (prevents false positives)
+       -------------------------------------------------- */
+    _setupGracePeriodMonitors (on) {
+      /* Handle visibilitychange with grace period */
+      on(document, 'visibilitychange', () => {
+        if (!this.state.isStarted || this.state.isLocked || this.isSubmitting) return;
+
+        if (document.hidden) {
+          /* Tab hidden - start grace period timer */
+          this.lastFocusLossAt = Date.now();
+          this.focusCheckTimer = setTimeout(() => {
+            /* Grace period passed - still hidden, record violation */
+            if (document.hidden && !this.isSubmitting) {
+              this.recordViolation('tab_hidden', 'high',
+                'Tab was hidden (switched tabs or minimised).');
+            }
+          }, this.GRACE_PERIOD_MS);
+        } else {
+          /* Tab became visible - cancel pending violation if within grace period */
+          if (this.focusCheckTimer) {
+            const elapsed = Date.now() - this.lastFocusLossAt;
+            if (elapsed < this.GRACE_PERIOD_MS) {
+              /* Event was short-lived - likely system popup, log as warning */
+              this._logSuppressedEvent('tab_hidden', elapsed, 'System popup or brief blur');
+            }
+            clearTimeout(this.focusCheckTimer);
+            this.focusCheckTimer = null;
+          }
+        }
+      });
+
+      /* Handle window blur with grace period */
+      on(window, 'blur', () => {
+        if (!this.state.isStarted || this.state.isLocked || this.reenteringFS || this.isSubmitting) return;
+
+        /* Check if user was in a form input (suggests form popup vs intentional switch) */
+        const activeElement = document.activeElement;
+        const wasInInput = activeElement && (
+          ['input', 'textarea', 'select'].includes(activeElement.tagName.toLowerCase()) ||
+          activeElement.isContentEditable
+        );
+
+        this.lastBlurAt = Date.now();
+        this.focusCheckTimer = setTimeout(() => {
+          /* Grace period passed - check if still blurred and not submitting */
+          if (!document.hasFocus() && !this.isSubmitting) {
+            /* Still not focused after grace period - record violation */
+            this.recordViolation('window_blur', 'high',
+              'Window lost focus.');
+          }
+        }, wasInInput ? this.GRACE_PERIOD_MS * 2 : this.GRACE_PERIOD_MS);
+      });
+
+      /* Handle window focus - cancel pending blur violation */
+      on(window, 'focus', () => {
+        if (this.focusCheckTimer) {
+          const elapsed = Date.now() - Math.max(this.lastFocusLossAt, this.lastBlurAt);
+          if (elapsed < this.GRACE_PERIOD_MS || elapsed < this.GRACE_PERIOD_MS * 2) {
+            /* Event was short-lived - likely system popup */
+            this._logSuppressedEvent('window_blur', elapsed, 'System popup or brief blur');
+          }
+          clearTimeout(this.focusCheckTimer);
+          this.focusCheckTimer = null;
+        }
+      });
+
+      /* Network status check - suppress violations when offline */
+      on(window, 'online', () => {
+        if (this.focusCheckTimer) {
+          /* Connection restored - check if we should still record violation */
+          clearTimeout(this.focusCheckTimer);
+          this.focusCheckTimer = null;
+          this._logSuppressedEvent('network_related', 0, 'Connection restored - possible network suspension');
+        }
+      });
+    }
+
+    /* Log suppressed events for audit/debug purposes */
+    _logSuppressedEvent (type, durationMs, reason) {
+      /* Send to background as low-severity log (not violation) */
+      bg({
+        type : 'LOG_VIOLATION',
+        data : {
+          sessionId   : this.state.sessionId,
+          studentName : this.state.studentName,
+          formUrl     : location.href,
+          violation   : `${type}_suppressed`,
+          severity    : 'low',
+          details     : `${type} suppressed: ${reason} (duration: ${durationMs}ms)`,
+          timestamp   : new Date().toISOString(),
+        },
+      });
+      console.log(`[CKA] ${type} suppressed: ${reason} (${durationMs}ms)`);
     }
 
     /* --------------------------------------------------
@@ -775,6 +866,8 @@
       const forms = document.querySelectorAll('form');
       forms.forEach(form => {
         const handler = () => {
+          /* Mark as submitting to suppress violations during submission */
+          this.isSubmitting = true;
           /* Google Forms may replace content after submit;
              give it a moment then check. */
           setTimeout(() => {
@@ -782,7 +875,9 @@
                 location.search.includes('formResponse')) {
               this.handleFormSubmitted();
             }
-          }, 2000);
+            /* Reset submitting flag after the transition */
+            this.isSubmitting = false;
+          }, 3000);
         };
         form.addEventListener('submit', handler);
         this.cleanups.push(() => form.removeEventListener('submit', handler));
