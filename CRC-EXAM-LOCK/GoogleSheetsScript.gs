@@ -6,6 +6,46 @@ var UNLOCKS_SHEET    = 'Unlocks';
 var RESETS_SHEET     = 'Resets';
 var DEBUGLOG_SHEET   = 'DebugLog';
 
+/* ---- Diagnostic: Log cell usage ---- */
+function logCellCount_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheets = ss.getSheets();
+  var totalCells = 0;
+  var msg = [];
+  for (var i = 0; i < sheets.length; i++) {
+    var s = sheets[i];
+    var maxRows = s.getMaxRows();
+    var maxCols = s.getMaxColumns();
+    var cells = maxRows * maxCols;
+    totalCells += cells;
+    msg.push(s.getName() + ': ' + maxRows + 'x' + maxCols + '=' + cells);
+  }
+  msg.push('TOTAL: ' + totalCells + '/10000000');
+  Logger.log(msg.join(' | '));
+  return totalCells;
+}
+
+/* ---- Emergency: Trim sheet dimensions ---- */
+function trimSheetDimensions_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheets = ss.getSheets();
+  for (var i = 0; i < sheets.length; i++) {
+    var sheet = sheets[i];
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+    var maxRows = sheet.getMaxRows();
+    var maxCols = sheet.getMaxColumns();
+    
+    // Keep buffer but remove excessive allocation
+    if (maxRows > Math.max(lastRow + 10, 100)) {
+      sheet.deleteRows(lastRow + 1, maxRows - lastRow - 10);
+    }
+    if (maxCols > Math.max(lastCol + 2, 10)) {
+      sheet.deleteColumns(lastCol + 1, maxCols - lastCol - 2);
+    }
+  }
+}
+
 /* ---- Ensure sheets exist with headers ---- */
 function ensureSheets () {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -99,6 +139,9 @@ function getLastClearedAt_(sessionId) {
 }
 
 function setClearMarker_(sessionId, reason) {
+  // Log cell count at start of admin operation
+  logCellCount_();
+  
   ensureSheets();
   if (!sessionId) return { ok: false, error: 'missing sessionId' };
 
@@ -126,6 +169,9 @@ function setClearMarker_(sessionId, reason) {
 function purgeViolationsForSession_(sessionId) {
   if (!sessionId) return { ok: false, error: 'missing sessionId' };
 
+  // Log cell count at start of admin operation
+  logCellCount_();
+  
   ensureSheets();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(VIOLATIONS_SHEET);
@@ -190,6 +236,9 @@ function recomputeViolationCount_(sessionId) {
 
 /* ---- Web App entry point ---- */
 function doPost (e) {
+  // Log cell count at start of admin operation
+  logCellCount_();
+  
   ensureSheets();
 
   var data;
@@ -380,6 +429,9 @@ function getKnownSessionIdSet_() {
 }
 
 function getSelectedSessionIds_() {
+  // Log cell count at start of admin operation
+  logCellCount_();
+  
   ensureSheets();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var range;
@@ -452,6 +504,9 @@ function purgeViolationsForSessions_(sessionIds) {
 }
 
 function setClearMarkersBatch_(sessionIds, reason) {
+  // Log cell count at start of admin operation
+  logCellCount_();
+  
   ensureSheets();
   if (!sessionIds || sessionIds.length === 0) return { ok: true, updated: 0, appended: 0, now: '' };
 
@@ -489,6 +544,9 @@ function setClearMarkersBatch_(sessionIds, reason) {
 }
 
 function clearViolationsForSessions(sessionIds, reason) {
+  // Log cell count at start of admin operation
+  logCellCount_();
+  
   ensureSheets();
   sessionIds = sessionIds || [];
   if (sessionIds.length === 0) return { ok: false, error: 'no_sessionIds' };
@@ -538,6 +596,9 @@ function clearViolationsForSessions(sessionIds, reason) {
 }
 
 function unlockSessions(sessionIds, reason) {
+  // Log cell count at start of admin operation
+  logCellCount_();
+  
   ensureSheets();
   sessionIds = sessionIds || [];
   if (sessionIds.length === 0) return { ok: false, error: 'no_sessionIds' };
@@ -591,6 +652,9 @@ function unlockSessions(sessionIds, reason) {
 }
 
 function getLockedViolationSessionIds_() {
+  // Log cell count at start of admin operation
+  logCellCount_();
+  
   ensureSheets();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(SESSIONS_SHEET);
@@ -787,6 +851,9 @@ function updateSessionViolationCount (sessionId) {
 
 // Clear all violations for a specific session
 function clearViolationsForSession(sessionId) {
+  // Log cell count at start of admin operation
+  logCellCount_();
+  
   ensureSheets();
   if (!sessionId) return { ok: false, error: 'missing sessionId' };
 
@@ -811,6 +878,9 @@ function clearViolationsForSession(sessionId) {
 }
 
 function unlockSession(sessionId, reason) {
+  // Log cell count at start of admin operation
+  logCellCount_();
+  
   ensureSheets();
   if (!sessionId) return { ok: false, error: 'missing sessionId' };
 
@@ -837,6 +907,9 @@ function unlockSession(sessionId, reason) {
 }
 
 function isSessionUnlocked(sessionId) {
+  // Log cell count at start of admin operation
+  logCellCount_();
+  
   ensureSheets();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(UNLOCKS_SHEET);
@@ -851,6 +924,9 @@ function isSessionUnlocked(sessionId) {
 
 // Clear all violations (admin reset)
 function clearAllViolations() {
+  // Log cell count at start of admin operation
+  logCellCount_();
+  
   ensureSheets();
 
   return withLock_(function () {
@@ -887,6 +963,7 @@ function clearAllViolations() {
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('CRC Admin')
+    .addItem('🆘 EMERGENCY: Trim Sheet Cells', 'trimSheetDimensions_')
     .addItem('Clear All Violations', 'clearAllViolations')
     .addSeparator()
     .addItem('Clear Violations by Session ID', 'clearViolationsBySessionPrompt')
@@ -954,6 +1031,9 @@ function unlockSessionPrompt() {
 
 /* ---- Allow GET requests (for testing) ---- */
 function doGet (e) {
+  // Log cell count at start of admin operation
+  logCellCount_();
+  
   ensureSheets();
   var p = (e && e.parameter) ? e.parameter : {};
   var action = p.action || '';
