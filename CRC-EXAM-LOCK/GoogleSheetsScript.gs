@@ -126,22 +126,29 @@ function setClearMarker_(sessionId, reason) {
 function purgeViolationsForSession_(sessionId) {
   if (!sessionId) return { ok: false, error: 'missing sessionId' };
 
+  ensureSheets();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(VIOLATIONS_SHEET);
   if (!sheet) return { ok: false, error: 'Violations sheet missing' };
 
   var data = sheet.getDataRange().getValues();
   var filtered = [data[0]]; // keep header row
+  var toDelete = [];
 
   for (var i = 1; i < data.length; i++) {
     if (data[i][1] !== sessionId) {
       filtered.push(data[i]);
+    } else {
+      toDelete.push(i + 1); // +1 for 1-based row numbers
     }
   }
 
-  sheet.clearContents();
-  sheet.getRange(1, 1, filtered.length, filtered[0].length).setValues(filtered);
-  return { ok: true, deleted: data.length - filtered.length };
+  // Delete rows in reverse order to maintain indices
+  for (var i = toDelete.length - 1; i >= 0; i--) {
+    sheet.deleteRow(toDelete[i]);
+  }
+  
+  return { ok: true, deleted: toDelete.length };
 }
 
 function purgeAllViolations_() {
@@ -427,13 +434,21 @@ function purgeViolationsForSessions_(sessionIds) {
   if (!data || data.length <= 1) return { ok: true, deleted: 0 };
 
   var filtered = [data[0]];
+  var toDelete = [];
   for (var r = 1; r < data.length; r++) {
-    if (!set[data[r][1]]) filtered.push(data[r]);
+    if (!set[data[r][1]]) {
+      filtered.push(data[r]);
+    } else {
+      toDelete.push(r + 1); // +1 for 1-based row numbers
+    }
   }
 
-  sheet.clearContents();
-  sheet.getRange(1, 1, filtered.length, filtered[0].length).setValues(filtered);
-  return { ok: true, deleted: data.length - filtered.length };
+  // Delete rows in reverse order to maintain indices
+  for (var i = toDelete.length - 1; i >= 0; i--) {
+    sheet.deleteRow(toDelete[i]);
+  }
+  
+  return { ok: true, deleted: toDelete.length };
 }
 
 function setClearMarkersBatch_(sessionIds, reason) {
