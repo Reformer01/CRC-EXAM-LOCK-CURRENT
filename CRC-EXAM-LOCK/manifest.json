@@ -4,7 +4,10 @@
   "version": "1.0.0",
   "description": "Exam proctoring extension for CRC — locks down Google Forms with a 2-hour timer and reports to Google Sheets",
   "permissions": [
-    "storage"
+    "storage",
+    "tabs",
+    "scripting",
+    "activeTab"
   ],
   "host_permissions": [
     "https://script.google.com/*",

@@ -1,3 +1,8 @@
+/* ============================================================
+   CKA Exam Lockdown — Background Service Worker
+   Handles Google Sheets logging, tab monitoring, and keep-alive.
+   ============================================================ */
+
 /* ---------- CONFIG ---------- */
 const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbx_DIVOKWf_MN5bsDama2HfBFRPlIWc8lgmOa93Z20bvoHEpsyOyLZgDILh1xk0SEDT/exec';
 const RETRY_DELAY = 3000;
@@ -59,20 +64,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       });
       break;
 
-    case 'TEST_WEBHOOK':
-      postToSheets({
-        action      : 'log_violation',
-        sessionId   : activeSession?.sessionId ?? `test_${Date.now()}`,
-        studentName : activeSession?.student ?? 'Test Student',
-        violation   : 'webhook_test',
-        severity    : 'info',
-        details     : 'Manual webhook test from popup.',
-        timestamp   : new Date().toISOString(),
-      })
-        .then(() => sendResponse({ ok: true }))
-        .catch(err => sendResponse({ ok: false, error: String(err?.message || err) }));
-      break;
-
     default:
       sendResponse({ ok: false, error: 'unknown message type' });
   }
@@ -80,11 +71,37 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true;
 });
 
+/* ==========================================================
+   TAB MONITORING — detect tab switches during active exam
+   ========================================================== */
+chrome.tabs.onActivated.addListener(info => {
+  if (!activeSession) return;
 
+  if (info.tabId !== activeSession.tabId) {
+    notifyContentScript(activeSession.tabId, {
+      type    : 'TAB_SWITCH_DETECTED',
+      message : 'Switched to a different tab.',
+    });
+
+    postToSheets({
+      action      : 'log_violation',
+      sessionId   : activeSession.sessionId,
+      studentName : activeSession.student,
+      violation   : 'tab_switch_bg',
+      severity    : 'high',
+      details     : 'Background detected tab switch away from exam.',
+      timestamp   : new Date().toISOString(),
+    });
+  }
+});
+
+/* ==========================================================
+   GOOGLE SHEETS WEBHOOK
+   ========================================================== */
 async function postToSheets (payload, attempt = 1) {
-  if (!WEBHOOK_URL) {
+  if (!WEBHOOK_URL || WEBHOOK_URL === 'YOUR_GOOGLE_SHEETS_WEBHOOK_URL_HERE') {
     console.warn('[CKA] Webhook URL not configured — skipping POST.', payload);
-    throw new Error('Webhook URL not configured');
+    return;
   }
 
   try {
@@ -102,19 +119,17 @@ async function postToSheets (payload, attempt = 1) {
       redirect : 'follow',          // follow Apps Script's 302 redirect
     });
     console.log('[CKA] ✅ Logged to Google Sheets:', payload.action, resp.status, payload);
-    return;
   } catch (err) {
     console.error(`[CKA] ❌ Sheets POST failed (attempt ${attempt}):`, err);
     if (attempt < MAX_RETRIES) {
       setTimeout(() => postToSheets(payload, attempt + 1), RETRY_DELAY);
-      return;
     }
-
-    throw err;
   }
 }
 
-
+/* ==========================================================
+   HELPERS
+   ========================================================== */
 
 function setBadge (text, colour) {
   try {
@@ -129,6 +144,12 @@ function notifyContentScript (tabId, msg) {
     chrome.tabs.sendMessage(tabId, msg).catch(() => {});
   } catch { /* tab might have closed */ }
 }
+
+/* ---------- Keep-alive alarm ---------- */
+chrome.alarms?.create('cka-keepalive', { periodInMinutes: 1 });
+chrome.alarms?.onAlarm.addListener(alarm => {
+  if (alarm.name === 'cka-keepalive') { /* no-op keep-alive */ }
+});
 
 /* ---------- Install / update ---------- */
 chrome.runtime.onInstalled.addListener(() => {

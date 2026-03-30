@@ -19,7 +19,6 @@
     COOLDOWN_MS      : 2000,                  // per-type cooldown
     TOAST_DURATION   : 4000,
     DEVTOOLS_CHECK_MS: 3000,
-    UNLOCK_POLL_MS   : 5000,
     /* Google Sheets webhook — replace after deploying GoogleSheetsScript.gs */
     WEBHOOK_URL      : 'https://script.google.com/macros/s/AKfycbx_DIVOKWf_MN5bsDama2HfBFRPlIWc8lgmOa93Z20bvoHEpsyOyLZgDILh1xk0SEDT/exec',
   });
@@ -108,9 +107,6 @@
       /* devtools detection interval */
       this.devtoolsInterval = null;
 
-      /* remote unlock polling interval */
-      this.unlockPollInterval = null;
-
       /* whether we are in the middle of re-entering fullscreen */
       this.reenteringFS = false;
 
@@ -135,9 +131,7 @@
       }
 
       if (this.state.isLocked) {
-        this.showLockout('Your exam has been locked due to violations.');
-        this.startUnlockPolling();
-        return;
+        return this.showLockout('Your exam has been locked due to violations.');
       }
 
       if (this.state.isSubmitted) {
@@ -266,54 +260,6 @@
       this.overlayEl = overlay;
     }
 
-    /* --------------------------------------------------
-       REMOTE UNLOCK (admin clears in Google Sheets)
-       -------------------------------------------------- */
-    startUnlockPolling () {
-      this.stopUnlockPolling();
-
-      if (!this.state.sessionId) return;
-      if (!CFG.WEBHOOK_URL || CFG.WEBHOOK_URL === 'YOUR_GOOGLE_SHEETS_WEBHOOK_URL_HERE') return;
-
-      const check = async () => {
-        try {
-          const url = new URL(CFG.WEBHOOK_URL);
-          url.searchParams.set('action', 'unlock_status');
-          url.searchParams.set('sessionId', this.state.sessionId);
-
-          const resp = await fetch(url.toString(), { method: 'GET', redirect: 'follow' });
-          const data = await resp.json().catch(() => null);
-          if (data && data.ok && data.unlocked === true) {
-            this.unlockFromAdmin();
-          }
-        } catch {
-          /* ignore; will retry */
-        }
-      };
-
-      check();
-      this.unlockPollInterval = setInterval(check, CFG.UNLOCK_POLL_MS);
-    }
-
-    stopUnlockPolling () {
-      if (this.unlockPollInterval) {
-        clearInterval(this.unlockPollInterval);
-        this.unlockPollInterval = null;
-      }
-    }
-
-    unlockFromAdmin () {
-      this.stopUnlockPolling();
-      this.state.isLocked = false;
-      this.state.violationCount = 0;
-      this.state.violations = [];
-      this.saveState();
-      this.clearOverlay();
-
-      this.showToast('Admin cleared your session. You may continue the exam.', 'info');
-      this.resumeExam();
-    }
-
     /** Confirmation overlay after form submission. */
     showSubmitted () {
       this.clearOverlay();
@@ -349,13 +295,13 @@
         this.logEvent('exam_submitted', 'info',
           'Student submitted their form.');
       }
-      this.stopUnlockPolling();
       this.showSubmitted();
     }
 
-
+    /* --------------------------------------------------
+       BEGIN / RESUME EXAM
+       -------------------------------------------------- */
     beginExam (name) {
-      this.stopUnlockPolling();
       this.state.sessionId      = genId();
       this.state.studentName    = name;
       this.state.startTime      = Date.now();
@@ -385,7 +331,6 @@
     }
 
     resumeExam () {
-      this.stopUnlockPolling();
       this.clearOverlay();
       this.activateExamMode();
     }
@@ -520,35 +465,7 @@
     showToast (message, level = 'warning') {
       const t = document.createElement('div');
       t.className = `cka-toast cka-toast--${level}`;
-      const msgEl = document.createElement('div');
-      msgEl.className = 'cka-toast__msg';
-      msgEl.textContent = message;
-      t.appendChild(msgEl);
-
-      const shouldShowFullscreenBtn =
-        !document.fullscreenElement &&
-        level !== 'info';
-
-      if (shouldShowFullscreenBtn) {
-        const actions = document.createElement('div');
-        actions.className = 'cka-toast__actions';
-
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'cka-toast__btn';
-        btn.textContent = 'Return to Full Screen';
-        btn.addEventListener('click', async () => {
-          try {
-            await document.documentElement.requestFullscreen();
-            t.remove();
-          } catch (err) {
-            this.showToast('Unable to enter full screen. Click on the page and try again.', 'warning');
-          }
-        });
-
-        actions.appendChild(btn);
-        t.appendChild(actions);
-      }
+      t.textContent = message;
       document.body.appendChild(t);
       setTimeout(() => {
         t.classList.add('cka-toast--exit');
