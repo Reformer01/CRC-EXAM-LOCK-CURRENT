@@ -641,7 +641,7 @@
       this.updateViolationBadge();
 
       this.showToast(
-        `⚠️ Violation ${this.state.violationCount}/${CFG.MAX_VIOLATIONS}: ${details}`,
+        '⚠️ Violation ' + this.state.violationCount + '/' + CFG.MAX_VIOLATIONS + ': ' + details,
         severity === 'critical' ? 'error' : 'warning'
       );
 
@@ -717,8 +717,21 @@
         if (e.key === 'F12') {
           e.preventDefault();
           this.recordViolation('devtools_key', 'critical',
-            'Pressed F12 (developer tools).');
-          return;
+            'Developer tools key pressed.');
+        }
+
+        /* Block copy/paste shortcuts */
+        if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'x'].includes(e.key.toLowerCase())) {
+          e.preventDefault();
+          this.recordViolation('copy_paste', 'high',
+            `Copy/paste shortcut blocked (${e.ctrlKey ? 'Ctrl' : 'Meta'}+${e.key.toUpperCase()}).`);
+        }
+
+        /* Block PrintScreen */
+        if (e.key === 'PrintScreen' || (e.key === 'PrtSc' && e.shiftKey)) {
+          e.preventDefault();
+          this.recordViolation('screenshot_attempt', 'critical',
+            'Screenshot attempt blocked.');
         }
 
         if (e.ctrlKey || e.metaKey) {
@@ -760,12 +773,6 @@
       /* ---- clipboard events ---- */
       for (const evt of ['copy', 'cut', 'paste']) {
         on(document, evt, e => {
-          if (!this.state.isStarted || this.state.isLocked) return;
-          e.preventDefault();
-          this.recordViolation(`clipboard_${evt}`, 'medium',
-            `Attempted to ${evt}.`);
-        }, true);
-      }
 
       /* ---- right-click ---- */
       on(document, 'contextmenu', e => {
@@ -1066,7 +1073,9 @@
     teardown () {
       if (this.timerInterval) clearInterval(this.timerInterval);
       if (this.devtoolsInterval) clearInterval(this.devtoolsInterval);
-      this.cleanups.forEach(fn => { try { fn(); } catch {} });
+      if (this.cleanups && Array.isArray(this.cleanups)) {
+        this.cleanups.forEach(fn => { try { fn(); } catch (e) { console.error('[CRC] Cleanup error:', e); } });
+      }
       this.cleanups = [];
 
       /* tell background exam is no longer active */

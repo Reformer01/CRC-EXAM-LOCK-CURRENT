@@ -573,8 +573,21 @@
         if (e.key === 'F12') {
           e.preventDefault();
           this.recordViolation('devtools_key', 'critical',
-            'Pressed F12 (developer tools).');
-          return;
+            'Developer tools key pressed.');
+        }
+
+        /* Block copy/paste shortcuts */
+        if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'x'].includes(e.key.toLowerCase())) {
+          e.preventDefault();
+          this.recordViolation('copy_paste', 'high',
+            'Copy/paste shortcut blocked (' + (e.ctrlKey ? 'Ctrl' : 'Meta') + '+' + e.key.toUpperCase() + ').');
+        }
+
+        /* Block PrintScreen */
+        if (e.key === 'PrintScreen' || (e.key === 'PrtSc' && e.shiftKey)) {
+          e.preventDefault();
+          this.recordViolation('screenshot_attempt', 'critical',
+            'Screenshot attempt blocked.');
         }
 
         if (e.ctrlKey || e.metaKey) {
@@ -622,6 +635,36 @@
             `Attempted to ${evt}.`);
         }, true);
       }
+
+      /* ---- clipboard monitoring ---- */
+      on(document, 'copy', e => {
+        if (!this.state.isStarted || this.state.isLocked) return;
+        
+        // Check if copying exam content
+        const selection = document.getSelection().toString();
+        if (selection && selection.length > 10) {
+          this.recordViolation('copy_content', 'high',
+            'Attempted to copy content: ' + selection.substring(0, 50) + '...');
+        }
+      });
+
+      on(document, 'paste', e => {
+        if (!this.state.isStarted || this.state.isLocked) return;
+        
+        // Block paste attempts entirely
+        e.preventDefault();
+        this.recordViolation('paste_attempt', 'high',
+          'Paste attempt blocked.');
+      });
+
+      on(document, 'cut', e => {
+        if (!this.state.isStarted || this.state.isLocked) return;
+        
+        // Block cut attempts
+        e.preventDefault();
+        this.recordViolation('cut_attempt', 'high',
+          'Cut attempt blocked.');
+      });
 
       /* ---- right-click ---- */
       on(document, 'contextmenu', e => {
@@ -915,10 +958,11 @@
     teardown () {
       if (this.timerInterval) clearInterval(this.timerInterval);
       if (this.devtoolsInterval) clearInterval(this.devtoolsInterval);
-      this.cleanups.forEach(fn => { try { fn(); } catch {} });
+      if (this.cleanups && Array.isArray(this.cleanups)) {
+        this.cleanups.forEach(fn => { try { fn(); } catch (e) { console.error('[CKA] Cleanup error:', e); } });
+      }
       this.cleanups = [];
-
-      /* tell background exam is no longer active */
+    }   /* tell background exam is no longer active */
       bg({ type: 'EXAM_INACTIVE' });
     }
   }
