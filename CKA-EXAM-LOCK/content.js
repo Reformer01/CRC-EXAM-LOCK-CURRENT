@@ -302,7 +302,7 @@
         this.logEvent('exam_submitted', 'info',
           'Student submitted their form.');
       }
-      this.showSubmitted();
+      // Removed showSubmitted overlay - student can see Google Forms confirmation directly
     }
 
     /* --------------------------------------------------
@@ -792,13 +792,12 @@
         Promise.resolve(result)
           .then(() => {
             this.hideFullscreenBanner();
+            this.reenteringFS = false; // Reset flag immediately after success
           })
           .catch(() => {
             /* re-entry failed (no user gesture) — show banner */
             this.showFullscreenBanner();
-          })
-          .finally(() => {
-            setTimeout(() => { this.reenteringFS = false; }, 500);
+            this.reenteringFS = false; // Reset flag even on failure
           });
       } else {
         this.reenteringFS = false;
@@ -899,7 +898,7 @@
         student   : this.state.studentName,
         reason    : 'submitted',
       });
-      this.showSubmitted();
+      // Removed showSubmitted overlay - student can see Google Forms confirmation directly
     }
 
     /* --------------------------------------------------

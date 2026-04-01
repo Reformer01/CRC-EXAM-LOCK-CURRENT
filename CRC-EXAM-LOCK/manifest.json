@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CRC Exam Lockdown",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Exam proctoring extension for CRC — locks down Google Forms with a 2-hour timer and reports to Google Sheets",
   "permissions": [
     "storage",

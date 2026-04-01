@@ -8,21 +8,40 @@ var DEBUGLOG_SHEET   = 'DebugLog';
 
 /* ---- Diagnostic: Log cell usage ---- */
 function logCellCount_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheets = ss.getSheets();
-  var totalCells = 0;
-  var msg = [];
-  for (var i = 0; i < sheets.length; i++) {
-    var s = sheets[i];
-    var maxRows = s.getMaxRows();
-    var maxCols = s.getMaxColumns();
-    var cells = maxRows * maxCols;
-    totalCells += cells;
-    msg.push(s.getName() + ': ' + maxRows + 'x' + maxCols + '=' + cells);
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) {
+      Logger.log('ERROR: Cannot get active spreadsheet');
+      return 0;
+    }
+    
+    var sheets = ss.getSheets();
+    if (!sheets || !sheets.length) {
+      Logger.log('ERROR: Cannot get sheets array');
+      return 0;
+    }
+    
+    var totalCells = 0;
+    var msg = [];
+    for (var i = 0; i < sheets.length; i++) {
+      var s = sheets[i];
+      if (!s) {
+        Logger.log('WARNING: Sheet at index ' + i + ' is null');
+        continue;
+      }
+      var maxRows = s.getMaxRows();
+      var maxCols = s.getMaxColumns();
+      var cells = maxRows * maxCols;
+      totalCells += cells;
+      msg.push(s.getName() + ': ' + maxRows + 'x' + maxCols + '=' + cells);
+    }
+    msg.push('TOTAL: ' + totalCells + '/10000000');
+    Logger.log(msg.join(' | '));
+    return totalCells;
+  } catch (e) {
+    Logger.log('ERROR in logCellCount_: ' + String(e && e.message ? e.message : e));
+    return 0;
   }
-  msg.push('TOTAL: ' + totalCells + '/10000000');
-  Logger.log(msg.join(' | '));
-  return totalCells;
 }
 
 /* ---- Emergency: Trim sheet dimensions ---- */

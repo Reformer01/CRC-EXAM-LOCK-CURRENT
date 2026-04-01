@@ -162,7 +162,7 @@
       }
 
       if (this.state.isSubmitted) {
-        return this.showSubmitted();
+        return; // Removed showSubmitted call - function was deleted
       }
 
       if (this.state.isStarted && this.state.startTime) {
@@ -384,31 +384,6 @@
       this.resumeExam();
     }
 
-    /** Confirmation overlay after form submission. */
-    showSubmitted () {
-      this.clearOverlay();
-      this.removeTimer();
-
-      const overlay = document.createElement('div');
-      overlay.className = 'crc-overlay';
-      overlay.innerHTML = `
-        <div class="crc-card">
-          <div class="crc-card-icon crc-card-icon--green">✅</div>
-          <h2>Exam Submitted</h2>
-          <p>
-            Your responses have been recorded.<br>
-            You may now close this tab.
-          </p>
-          <p style="font-size:13px;color:#64748b;">
-            Student: <strong>${this.state.studentName}</strong>
-          </p>
-          <div class="crc-brand">${CFG.SCHOOL_NAME} EXAM PROCTORING SYSTEM</div>
-        </div>`;
-      document.body.appendChild(overlay);
-      this.overlayEl = overlay;
-    }
-
-
     handleResponsePage () {
       /* Mark session as submitted (if one exists) */
       if (this.state.isStarted && !this.state.isSubmitted) {
@@ -418,7 +393,7 @@
           'Student submitted their form.');
       }
       this.stopUnlockPolling();
-      this.showSubmitted();
+      // Removed showSubmitted overlay - student can see Google Forms confirmation directly
     }
 
 
@@ -959,13 +934,12 @@
         Promise.resolve(result)
           .then(() => {
             this.hideFullscreenBanner();
+            this.reenteringFS = false; // Reset flag immediately after success
           })
           .catch(() => {
             /* re-entry failed (no user gesture) — show banner */
             this.showFullscreenBanner();
-          })
-          .finally(() => {
-            setTimeout(() => { this.reenteringFS = false; }, 500);
+            this.reenteringFS = false; // Reset flag even on failure
           });
       } else {
         this.reenteringFS = false;
@@ -1075,7 +1049,7 @@
           this.showToast('Session finalized. A violation report will be emailed if any violations occurred.', 'info');
         }
       });
-      this.showSubmitted();
+      // Removed showSubmitted call - function was deleted
     }
 
     /* --------------------------------------------------
