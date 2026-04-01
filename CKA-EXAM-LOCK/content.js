@@ -348,7 +348,12 @@
       this.createViolationBadge();
       this.startTimer();
       this.attachMonitors();
-      this.requestFullscreen();
+      
+      // Delay fullscreen request to ensure page is ready
+      setTimeout(() => {
+        this.requestFullscreen();
+      }, 500);
+      
       this.startDevtoolsCheck();
       this.watchForSubmission();
 
@@ -793,13 +798,16 @@
           .then(() => {
             this.hideFullscreenBanner();
             this.reenteringFS = false; // Reset flag immediately after success
+            console.log('[CKA] Fullscreen entered successfully');
           })
-          .catch(() => {
+          .catch((err) => {
+            console.error('[CKA] Fullscreen failed:', err);
             /* re-entry failed (no user gesture) — show banner */
             this.showFullscreenBanner();
             this.reenteringFS = false; // Reset flag even on failure
           });
       } else {
+        console.error('[CKA] Fullscreen API not available');
         this.reenteringFS = false;
         this.showFullscreenBanner();
       }
