@@ -27,6 +27,19 @@
   --crc-mono:           'JetBrains Mono', 'Cascadia Code', monospace;
 }
 
+/* Visually hidden but present for screen readers (labels, etc.). */
+.crc-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ==========================================================
    FULL-SCREEN OVERLAY BACKDROP
    ========================================================== */
@@ -86,6 +99,28 @@
     0 8px 40px rgba(0,0,0,0.45),
     0 0 80px var(--crc-accent-glow);
   animation: crc-cardEnter 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  /* On short laptop screens the setup card (rules panel included) must stay
+     reachable: cap the height to the viewport and scroll inside the card so
+     nothing is clipped by the fixed overlay behind it. */
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.28) transparent;
+}
+
+.crc-card::-webkit-scrollbar {
+  width: 8px;
+}
+
+.crc-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.crc-card::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.22);
+  border-radius: 999px;
 }
 
 @keyframes crc-cardEnter {
@@ -148,12 +183,21 @@
 }
 
 /* ---------- Typography ---------- */
+.crc-card h1,
 .crc-card h2 {
   margin: 0 0 8px;
   font-size: 26px;
   font-weight: 800;
   color: var(--crc-text-bright);
   letter-spacing: -0.025em;
+}
+
+/* Contact/status detail under a lockout heading */
+.crc-lockout-help {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--crc-text-dim);
+  margin: -14px 0 0;
 }
 
 .crc-card p {
@@ -166,6 +210,70 @@
 .crc-card p strong {
   color: var(--crc-text);
   font-weight: 600;
+}
+
+/* ==========================================================
+   KEYBOARD FOCUS  (visible focus rings, never removed)
+   ========================================================== */
+.crc-btn:focus-visible,
+.crc-toast__btn:focus-visible,
+.crc-fs-banner__btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+/* ==========================================================
+   RULES PANEL (setup card — pre-exam legibility)
+   ========================================================== */
+.crc-rules {
+  width: 100%;
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border: 1px solid rgba(99, 102, 241, 0.22);
+  border-radius: 12px;
+  background: rgba(99, 102, 241, 0.06);
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.crc-rules__title {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--crc-text-dim);
+}
+
+.crc-rules ul {
+  margin: 0;
+  padding-left: 2px;
+  list-style: none;
+}
+
+.crc-rules li {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--crc-text);
+  padding-left: 22px;
+  position: relative;
+}
+
+.crc-rules li + li {
+  margin-top: 6px;
+}
+
+.crc-rules li b {
+  color: var(--crc-text-bright);
+  font-weight: 600;
+}
+
+.crc-rules li.crc-rules--safe {
+  color: var(--crc-text);
+}
+
+.crc-rules li.crc-rules--safe b {
+  color: #6ee7b7;
 }
 
 /* ==========================================================
@@ -193,7 +301,7 @@
 }
 
 .crc-input::placeholder {
-  color: #64748b;
+  color: var(--crc-text-dim);
 }
 
 .crc-input[type="email"] {
@@ -201,7 +309,7 @@
 }
 
 .crc-input[type="email"]::placeholder {
-  color: #64748b;
+  color: var(--crc-text-dim);
 }
 
 .crc-input[type="email"] + .crc-input,
@@ -306,6 +414,57 @@
 }
 
 /* ==========================================================
+   SHORT SCREENS  (keep the whole setup card usable)
+   On laptops with ~780px-or-less of usable height, tighten
+   spacing and type so the rules panel and Start button fit
+   without heavy scrolling; the card's internal scroll above
+   is the safety net for anything still too tall.
+   ========================================================== */
+@media (max-height: 780px) {
+  .crc-card {
+    padding: 24px 32px 20px;
+  }
+  .crc-card-icon {
+    width: 52px;
+    height: 52px;
+    font-size: 24px;
+    margin-bottom: 12px;
+  }
+  .crc-card h1,
+  .crc-card h2 {
+    font-size: 22px;
+    margin-bottom: 6px;
+  }
+  .crc-card p {
+    font-size: 14px;
+    margin-bottom: 14px;
+  }
+  .crc-rules {
+    margin-bottom: 12px;
+    padding: 10px 14px;
+  }
+  .crc-rules__title {
+    margin-bottom: 6px;
+  }
+  .crc-rules li {
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  .crc-rules li + li {
+    margin-top: 4px;
+  }
+  .crc-input {
+    padding: 11px 16px;
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+  .crc-btn {
+    padding: 12px 28px;
+    font-size: 14px;
+  }
+}
+
+/* ==========================================================
    TIMER BADGE  (top-right, floating pill)
    ========================================================== */
 .crc-timer {
@@ -329,23 +488,24 @@
   transition: all 0.5s ease;
 }
 
+/* Opaque darker stops keep the white timer text >= 3:1 (large text) */
 .crc-timer--green {
-  background: linear-gradient(135deg, rgba(16,185,129,0.85), rgba(5,150,105,0.85));
+  background: linear-gradient(135deg, #059669, #047857);
   box-shadow: 0 4px 24px var(--crc-success-glow), 0 0 50px rgba(16,185,129,0.08);
 }
 
 .crc-timer--yellow {
-  background: linear-gradient(135deg, rgba(245,158,11,0.85), rgba(217,119,6,0.85));
+  background: linear-gradient(135deg, #d97706, #b45309);
   box-shadow: 0 4px 24px var(--crc-warn-glow);
 }
 
 .crc-timer--orange {
-  background: linear-gradient(135deg, rgba(249,115,22,0.85), rgba(234,88,12,0.85));
+  background: linear-gradient(135deg, #ea580c, #c2410c);
   box-shadow: 0 4px 24px rgba(249,115,22,0.3);
 }
 
 .crc-timer--red {
-  background: linear-gradient(135deg, rgba(239,68,68,0.9), rgba(220,38,38,0.9));
+  background: linear-gradient(135deg, #dc2626, #991b1b);
   box-shadow: 0 4px 24px var(--crc-danger-glow);
 }
 
@@ -389,13 +549,13 @@
 }
 
 .crc-violation-badge--warn {
-  background: rgba(245,158,11,0.75);
+  background: #b45309;
   border-color: rgba(245,158,11,0.3);
   box-shadow: 0 2px 16px var(--crc-warn-glow);
 }
 
 .crc-violation-badge--danger {
-  background: rgba(239,68,68,0.8);
+  background: #dc2626;
   border-color: rgba(239,68,68,0.3);
   box-shadow: 0 2px 16px var(--crc-danger-glow);
   animation: crc-badgePulse 1.2s ease-in-out infinite;
@@ -414,6 +574,8 @@
   top: 80px;
   right: 18px;
   z-index: 2147483646;
+  /* never intercept clicks on the form — only the action button below */
+  pointer-events: none;
   max-width: 380px;
   padding: 16px 22px;
   border-radius: 14px;
@@ -436,12 +598,15 @@
   display: flex;
   justify-content: flex-end;
   margin-top: 10px;
+  pointer-events: auto;
 }
 
 .crc-toast__btn {
   appearance: none;
-  border: 1px solid rgba(255,255,255,0.18);
-  background: rgba(255,255,255,0.15);
+  pointer-events: auto;
+  border: 1px solid rgba(255,255,255,0.3);
+  /* dark overlay keeps the white label >= 4.5:1 on every toast level */
+  background: rgba(0,0,0,0.22);
   color: #ffffff;
   border-radius: 12px;
   padding: 8px 12px;
@@ -452,8 +617,8 @@
 }
 
 .crc-toast__btn:hover {
-  background: rgba(255,255,255,0.25);
-  border-color: rgba(255,255,255,0.28);
+  background: rgba(0,0,0,0.32);
+  border-color: rgba(255,255,255,0.5);
   transform: translateY(-1px);
 }
 
@@ -466,16 +631,29 @@
   to   { transform: translateX(0);    opacity: 1; }
 }
 
+/* Opaque, dark-enough semantic stops so white text passes 4.5:1 on each */
 .crc-toast--warning {
-  background: linear-gradient(135deg, rgba(245,158,11,0.9), rgba(217,119,6,0.9));
+  background: linear-gradient(135deg, #b45309, #92400e);
 }
 
 .crc-toast--error {
-  background: linear-gradient(135deg, rgba(239,68,68,0.9), rgba(185,28,28,0.9));
+  background: linear-gradient(135deg, #dc2626, #991b1b);
 }
 
 .crc-toast--info {
-  background: linear-gradient(135deg, rgba(99,102,241,0.9), rgba(79,70,229,0.9));
+  background: linear-gradient(135deg, #4f46e5, #4338ca);
+}
+
+/* finish-line reward for clean exams: calm, semantic green (4.5:1 white
+   text on every stop) with a gentle settle-in instead of the slide */
+.crc-toast--success {
+  background: linear-gradient(135deg, #047857, #065f46);
+  animation: crc-toastSettle 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes crc-toastSettle {
+  from { transform: translateY(8px) scale(0.96); opacity: 0; }
+  to   { transform: translateY(0) scale(1);       opacity: 1; }
 }
 
 .crc-toast--exit {
@@ -494,6 +672,8 @@
   position: fixed;
   top: 0; left: 0; right: 0;
   z-index: 2147483646;
+  /* never intercept clicks on the form — only the action button below */
+  pointer-events: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -503,7 +683,7 @@
   max-width: 100vw;
   box-sizing: border-box;
   flex-wrap: wrap;
-  background: linear-gradient(135deg, rgba(239,68,68,0.95), rgba(220,38,38,0.95));
+  background: linear-gradient(135deg, #dc2626, #991b1b);
   backdrop-filter: blur(8px);
   font-family: var(--crc-font);
   animation: crc-fadeIn 0.3s ease-out;
@@ -520,10 +700,12 @@
 
 .crc-fs-banner__btn {
   flex: 0 0 auto;
+  pointer-events: auto;
   padding: 8px 18px;
-  border: 2px solid rgba(255,255,255,0.3);
+  border: 2px solid rgba(255,255,255,0.4);
   border-radius: 8px;
-  background: rgba(255,255,255,0.15);
+  /* dark overlay keeps the white label >= 4.5:1 on the red banner */
+  background: rgba(0,0,0,0.22);
   color: #ffffff;
   font-family: var(--crc-font);
   font-size: 13px;
@@ -533,8 +715,8 @@
 }
 
 .crc-fs-banner__btn:hover {
-  background: rgba(255,255,255,0.3);
-  border-color: rgba(255,255,255,0.5);
+  background: rgba(0,0,0,0.32);
+  border-color: rgba(255,255,255,0.6);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
@@ -546,7 +728,7 @@
   margin-top: 32px;
   font-size: 11px;
   font-weight: 600;
-  color: rgba(99,102,241,0.35);
+  color: #a5b4fc; /* indigo-300: >= 4.5:1 on the card surface */
   letter-spacing: 2px;
   text-transform: uppercase;
 }
@@ -586,58 +768,3 @@
   color: var(--crc-text-bright);
   font-weight: 700;
 }
-
-/* ==========================================================
-   RULES LIST  (setup overlay)
-   ========================================================== */
-.crc-rules {
-  text-align: left;
-  margin: 0 auto 24px;
-  padding: 0;
-  list-style: none;
-  max-width: 340px;
-}
-
-.crc-rules li {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 8px 0;
-  font-size: 13px;
-  color: var(--crc-text-dim);
-  line-height: 1.45;
-}
-
-.crc-rules li .crc-rule-icon {
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  background: rgba(99,102,241,0.1);
-  border: 1px solid rgba(99,102,241,0.15);
-}
-
-/* ==========================================================
-   TIME WARNING BANNER  (full-width, top)
-   ========================================================== */
-.crc-time-warning {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  z-index: 2147483645;
-  padding: 12px;
-  text-align: center;
-  font-family: var(--crc-font);
-  font-size: 14px;
-  font-weight: 700;
-  color: #ffffff;
-  animation: crc-fadeIn 0.3s ease-out;
-  backdrop-filter: blur(8px);
-}
-
-.crc-time-warning--amber  { background: rgba(245,158,11,0.9); }
-.crc-time-warning--orange { background: rgba(249,115,22,0.9); }
-.crc-time-warning--red    { background: rgba(239,68,68,0.9); }

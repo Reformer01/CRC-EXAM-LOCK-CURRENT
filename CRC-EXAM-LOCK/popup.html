@@ -25,7 +25,7 @@
     <div id="popup-status-text" class="popup-card__value">Checking…</div>
   </section>
 
-  <!-- Student / detail rows -->
+  <!-- Detail rows -->
   <section id="popup-details" class="popup-details" style="display:none">
     <div class="popup-detail-row">
       <span class="popup-detail-row__label">Student</span>
@@ -35,6 +35,15 @@
       <span class="popup-detail-row__label">Session ID</span>
       <span id="popup-session" class="popup-detail-row__value popup-mono">—</span>
     </div>
+    <div class="popup-detail-row">
+      <span class="popup-detail-row__label">Time remaining</span>
+      <span id="popup-time" class="popup-detail-row__value popup-mono">—</span>
+    </div>
+    <div class="popup-detail-row">
+      <span class="popup-detail-row__label">Violations</span>
+      <span id="popup-violations" class="popup-detail-row__value">—</span>
+    </div>
+    <div id="popup-note" class="popup-help" aria-live="polite"></div>
   </section>
 
   <!-- Actions -->
