@@ -10,7 +10,7 @@ var REVIEW_SHEET     = 'Review Queue';
 
 var REVIEW_HEADERS = [
   'Session ID', 'Student Name', 'Student Email', 'Status', 'Violation Count',
-  'Locked / Flagged Since', 'Waiting', 'Latest Flag', 'Next Step'
+  'Time Left', 'Granted', 'Locked / Flagged Since', 'Waiting', 'Latest Flag', 'Next Step'
 ];
 /* Review Queue row fills: darker red = locked 10+ min (stale), red = locked,
    yellow = flagged while still taking the exam, green = all clear. */
@@ -1780,6 +1780,7 @@ function reviewQueueRows_() {
   var iName = idx('Student Name'), iEmail = idx('Student Email');
   var iStatus = idx('Status'), iCount = idx('Violation Count');
   var iStart = idx('Start Time'), iEnd = idx('End Time');
+  var iDur = idx('Duration (ms)'), iExt = idx('Extension (ms)');
   var iReason = idx('End Reason');
   var now = Date.now();
   var latest = latestViolationMap_();
@@ -1801,6 +1802,24 @@ function reviewQueueRows_() {
     if (!sinceDate) sinceDate = parseDateValue_(rows[i][iStart]);
     var waitMs = sinceDate ? now - sinceDate.getTime() : -1;
 
+    /* Time left on the real clock (start + duration - now). It keeps
+       declining while a student is locked out too, which is exactly what an
+       invigilator needs when sizing a grant: an unlock alone may not leave
+       enough time, and an "Expired" row should get time before it is
+       unlocked. */
+    var startDate = parseDateValue_(rows[i][iStart]);
+    var durationMs = Number(rows[i][iDur] || 0) || 0;
+    var remainingMs = (startDate && durationMs > 0)
+      ? durationMs - (now - startDate.getTime()) : -1;
+    var timeLeftText = remainingMs > 0 ? fmtAgeHuman_(remainingMs)
+      : remainingMs === -1 ? '' : 'Expired';
+
+    /* Granted chip: cumulative extra time this session already received
+       (the Sessions Extension (ms) audit column). Blank when none, so a
+       grant stands out and no-grant rows stay quiet. */
+    var extMs = iExt !== -1 ? Number(rows[i][iExt] || 0) || 0 : 0;
+    var grantedText = extMs > 0 ? '+' + fmtAgeHuman_(extMs) : '';
+
     var flagText = '';
     if (viol) {
       flagText = viol.type;
@@ -1816,6 +1835,8 @@ function reviewQueueRows_() {
       email: String(rows[i][iEmail] || ''),
       locked: locked,
       count: count,
+      timeLeftText: timeLeftText,
+      grantedText: grantedText,
       statusText: locked ? 'Locked (Violations)' : 'Active with flags',
       sinceText: sinceDate ? fmtStamp_(sinceDate) : '',
       waitMs: waitMs,
@@ -1844,13 +1865,14 @@ function refreshReviewQueue_() {
   for (var i = 0; i < items.length; i++) {
     var it = items[i];
     grid.push([it.sid, it.name, it.email, it.statusText, it.count,
-      it.sinceText, it.waitText, it.flagText, it.nextText]);
+      it.timeLeftText, it.grantedText, it.sinceText, it.waitText,
+      it.flagText, it.nextText]);
     fills.push(it.locked && it.waitMs >= LOCKED_STALE_MS ? LOCKED_STALE_FILL :
       it.locked ? LOCKED_FILL : WATCH_FILL);
   }
   if (!items.length) {
     grid.push(['\uD83C\uDF89 All clear \u2014 no locked sessions and no active flags.',
-      '', '', '', '', '', '', '', '']);
+      '', '', '', '', '', '', '', '', '', '']);
     fills.push(CLEAR_FILL);
   }
   writeQueueGrid_(sheet, grid, fills);
@@ -2003,6 +2025,35 @@ function reviewSelectedGrantTime() {
   refreshReviewQueue_();
 }
 
+/** Queue Row presets: apply `minutes` to the selected running row in one
+    click, with no minutes prompt and no confirm. Presets are safe to skip
+    the confirm: they only add time (never remove or delete anything), they
+    are capped by the shared 8 h ceiling, and every grant is audited — the
+    plain-language result dialog is the feedback. */
+function reviewSelectedGrantPreset_(minutes) {
+  var ui = SpreadsheetApp.getUi();
+  var sid = queueSelectedSessionId_(ui);
+  if (!sid) return;
+  var info = getSessionInfo_(sid);
+  if (!info) {
+    return ui.alert('Session not found',
+      'No row for session ' + sid + ' in the Sessions sheet. Refresh the queue.', ui.ButtonSet.OK);
+  }
+  if (info.status !== 'Active') {
+    return ui.alert('Not a running exam',
+      'Session ' + sid + ' is ' + (info.status || 'not active') +
+      '. Only active sessions can be extended.', ui.ButtonSet.OK);
+  }
+  showGrantResult_(ui,
+    grantTimeToSessions([sid], minutes, 'Review queue: +' + minutes + ' min preset'), minutes);
+  refreshReviewQueue_();
+}
+
+function reviewSelectedGrantPlus5()  { reviewSelectedGrantPreset_(5); }
+function reviewSelectedGrantPlus10() { reviewSelectedGrantPreset_(10); }
+function reviewSelectedGrantPlus15() { reviewSelectedGrantPreset_(15); }
+function reviewSelectedGrantPlus30() { reviewSelectedGrantPreset_(30); }
+
 // Add admin menu
 function onOpen() {
   var counts = { locked: 0, flagged: 0 };
@@ -2026,7 +2077,13 @@ function onOpen() {
     .addSeparator()
     .addItem('Queue Row: Unlock Session', 'reviewSelectedUnlock')
     .addItem('Queue Row: Clear False Positive & Unlock', 'reviewSelectedClearAndUnlock')
-    .addItem('Queue Row: Grant Time (+Minutes)', 'reviewSelectedGrantTime')
+    .addSubMenu(SpreadsheetApp.getUi().createMenu('Queue Row: Grant Time')
+      .addItem('+5 minutes', 'reviewSelectedGrantPlus5')
+      .addItem('+10 minutes', 'reviewSelectedGrantPlus10')
+      .addItem('+15 minutes', 'reviewSelectedGrantPlus15')
+      .addItem('+30 minutes', 'reviewSelectedGrantPlus30')
+      .addSeparator()
+      .addItem('Custom minutes…', 'reviewSelectedGrantTime'))
     .addSeparator()
     .addItem('🆘 EMERGENCY: Trim Sheet Cells', 'trimSheetDimensions_')
     .addItem('Clear All Violations', 'clearAllViolations')

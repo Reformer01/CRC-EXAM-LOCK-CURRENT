@@ -90,6 +90,30 @@ function createWorld(serverCfg, seedStorage) {
   let bgSession = null; // emulates background.js activeSession lifecycle
   let bgFinal = null;   // emulates background.js lastFinal (locked/submitted)
 
+  /* Web Audio stub: counts contexts created (gesture unlocks) and oscillator
+     starts, so the violation audio cue is observable in tests. */
+  const audioLog = { ctxCreated: 0, tones: 0 };
+  global.AudioContext = class AudioContextStub {
+    constructor() { audioLog.ctxCreated++; this.currentTime = 0.001; }
+    resume() { return Promise.resolve(); }
+    get destination() { return {}; }
+    createOscillator() {
+      audioLog.tones++;
+      return {
+        type: '',
+        frequency: { setValueAtTime() {} },
+        connect(node) { return node; },
+        start() {}, stop() {},
+      };
+    }
+    createGain() {
+      return {
+        gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} },
+        connect(node) { return node; },
+      };
+    }
+  };
+
   global.__crcExamLockLoaded = false;
   global.MutationObserver = class {
     constructor(cb) { this.cb = cb; observers.push(this); }
@@ -256,7 +280,7 @@ function createWorld(serverCfg, seedStorage) {
     bodyEl, formStub, fireDoc, fireWin, fireObserver, snapshot, startExam,
     liveStatus, getStatus, sentMsgs, fetchCounts,
     storageData, overlays, toasts, timer, badge, FORM_ID,
-    cfg,
+    cfg, audio: audioLog,
   };
 }
 

@@ -215,4 +215,18 @@ module.exports = async function run(t) {
       'Violation 2 of 4 — the 4th locks your exam.', 'live after 2: ' + liveEl().textContent);
     assert.ok(badgeEl().textContent.includes('2 of 4'), 'visual badge did not follow');
   });
+
+  /* ---- audio cue ---- */
+  const w3 = H.createWorld({});
+  await w3.startExam('Cue', 'cue@crc-test.local');
+  await t.check('violation increments play a subtle audio cue after the Start gesture', async () => {
+    assert.ok(w3.audio.ctxCreated >= 1, 'audio context not created on the Start click');
+    assert.strictEqual(w3.audio.tones, 0, 'tone fired before any violation');
+    w3.fireDoc('keydown', H.keyEvt('F12'));
+    await H.tick(1600);
+    assert.strictEqual(w3.audio.tones, 1, 'no tone on the 1st violation');
+    w3.fireDoc('keydown', H.keyEvt('F12'));
+    await H.tick(1600);
+    assert.strictEqual(w3.audio.tones, 2, 'no tone on the 2nd violation');
+  });
 };

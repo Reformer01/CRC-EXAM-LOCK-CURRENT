@@ -129,6 +129,62 @@
     }
   }
 
+  /* ---- Violation audio cue (no asset files, generated Web Audio) ---- */
+  /* Browsers only let audio start after a user gesture, so the context is
+     created lazily on the first pointer/key/click interaction and reused.
+     Everything is guarded: no audio hardware or API means silent no-ops,
+     never an error in the violation path. */
+  let audioCtx = null;
+
+  function unlockAudio () {
+    try {
+      if (audioCtx) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (typeof AC !== 'function') return;
+      audioCtx = new AC();
+      if (audioCtx && audioCtx.resume) audioCtx.resume().catch(() => {});
+    } catch (err) {
+      audioCtx = null;
+    }
+  }
+
+  function playViolationCue (count) {
+    try {
+      if (!audioCtx || typeof audioCtx.currentTime !== 'number') return;
+      /* soft two-tone blip: gentle early on, slightly lower and a touch
+         louder as the student nears the lock threshold — never a siren */
+      const urgent = count >= CFG.MAX_VIOLATIONS - 1;
+      const t0 = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(urgent ? 523.25 : 659.25, t0);
+      osc.frequency.setValueAtTime(urgent ? 392.0 : 523.25, t0 + 0.09);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(urgent ? 0.09 : 0.06, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.18);
+    } catch (err) {
+      /* audio unavailable — the visual/toast/live-region cues still fired */
+    }
+  }
+
+  /* unlock on the student's first real interaction (covers resume-after-
+     reload, which never passes through the Start button) */
+  const unlockOnFirstGesture = () => {
+    unlockAudio();
+    try {
+      window.removeEventListener('pointerdown', unlockOnFirstGesture);
+      window.removeEventListener('keydown', unlockOnFirstGesture);
+    } catch { /* ignore */ }
+  };
+  try {
+    window.addEventListener('pointerdown', unlockOnFirstGesture);
+    window.addEventListener('keydown', unlockOnFirstGesture);
+  } catch { /* ignore */ }
+
   /* Toast stacking (R-D fix): toasts are stacked under the top-right corner
      instead of rendered on top of each other. Positions are measured so a
      taller toast (wrapped text, action button) never overlaps its neighbour. */
@@ -431,6 +487,7 @@
       const err   = overlay.querySelector('#crc-name-error');
 
       btn.addEventListener('click', async () => {
+        unlockAudio(); // the click is a user gesture — start audio now
         const name = input.value.trim();
         const mail = email.value.trim();
         const durationMs = Number(dur.value);
@@ -1111,6 +1168,7 @@
       const prev = this._lastBadgeAnnounce;
       if (prev === c) return;
       this._lastBadgeAnnounce = c;
+      if (c > prev) playViolationCue(c); // subtle audio cue on each increment
       el.textContent = c > prev
         ? `Violation ${c} of ${CFG.MAX_VIOLATIONS} — the ${ordinal(CFG.MAX_VIOLATIONS)} locks your exam.`
         : c === 0

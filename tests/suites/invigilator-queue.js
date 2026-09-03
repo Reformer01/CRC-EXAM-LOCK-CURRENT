@@ -31,12 +31,15 @@ function makeUi() {
       };
     },
     createMenu(title) {
-      const items = [];
-      menus.push({ title, items });
+      const rec = { title, items: [] };
+      menus.push(rec);
       return {
-        addItem(label, fn) { items.push({ type: 'item', label, fn }); return this; },
-        addSeparator() { items.push({ type: 'sep' }); return this; },
+        addItem(label, fn) { rec.items.push({ type: 'item', label, fn }); return this; },
+        addSeparator() { rec.items.push({ type: 'sep' }); return this; },
+        addSubMenu(sub) { rec.items.push({ type: 'submenu', title: sub.title, items: sub.items }); return this; },
         addToUi() { return this; },
+        get title() { return rec.title; },
+        get items() { return rec.items; },
       };
     },
     alerts, menus,
@@ -84,8 +87,8 @@ module.exports = async function run(t) {
     assert.strictEqual(RQ._fills[2], STALE, 'stale fill');
     assert.strictEqual(RQ._fills[3], LOCKED, 'locked fill');
     assert.strictEqual(RQ._fills[4], WATCH, 'watch fill');
-    assert.ok(rows[1][6] && rows[1][6].length > 0, 'waiting text present');
-    assert.ok(/copy_paste/.test(rows[1][7]), 'latest flag shown');
+    assert.ok(rows[1][8] && rows[1][8].length > 0, 'waiting text present');
+    assert.ok(/copy_paste/.test(rows[1][9]), 'latest flag shown');
   });
 
   /* I3: terminal/clean sessions are excluded; all-clear state has a message row */
@@ -300,5 +303,107 @@ module.exports = async function run(t) {
     assert.ok(q, 'locked session must remain visible for unlocking');
     assert.strictEqual(q[4], 0, 'count zeroed by the clear');
     assert.strictEqual(q[3], 'Locked (Violations)');
+  });
+
+  /* I16: the Time Left column lets invigilators size grants — real-clock
+         remaining for running and locked sessions, Expired past the end */
+  const ui12 = makeUi();
+  const b12 = H.createBackendSandbox({ ui: ui12 });
+  const Q = b12.sheets['Review Queue'];
+  seedSession(b12.data('Sessions'), 'run', { start: isoAgo(10 * 60000), dur: 3600000, status: 'Active', count: 1 });
+  seedSession(b12.data('Sessions'), 'lock', { start: isoAgo(40 * 60000), end: isoAgo(20 * 60000), dur: 3600000, status: 'Locked (Violations)', count: 4, reason: 'max_violations' });
+  seedSession(b12.data('Sessions'), 'gone', { start: isoAgo(2 * 3600000), end: isoAgo(20 * 60000), dur: 3600000, status: 'Locked (Violations)', count: 4, reason: 'max_violations' });
+  b12.run('refreshReviewQueue_', []);
+  await t.check('I16: Time Left shows remaining clock for running and locked rows, Expired past the end', () => {
+    assert.ok(Q._data[0].includes('Time Left'), 'header: ' + Q._data[0].join('|'));
+    const row = (sid) => Q._data.find(r => r[0] === sid);
+    assert.ok(/^(4[89]|50)m$/.test(row('s_run')[5]), 'running left: ' + row('s_run')[5]);
+    assert.ok(/^(1[89]|20)m$/.test(row('s_lock')[5]), 'locked left should track the real clock: ' + row('s_lock')[5]);
+    assert.strictEqual(row('s_gone')[5], 'Expired', 'past-duration row not marked Expired');
+    assert.ok(row('s_run')[3] === 'Active with flags' && row('s_run')[4] === 1, 'watch row shape changed');
+  });
+
+  /* I17: quick-preset grants (+5/+10/+15/+30) apply with one click — no
+        minutes prompt, no confirm — extending the running session each time */
+  const ui14 = makeUi();
+  const b14 = H.createBackendSandbox({ ui: ui14 });
+  const PRESETS = [5, 10, 15, 30];
+  PRESETS.forEach(m => seedSession(b14.data('Sessions'), 'pre' + m, { status: 'Active', count: 1 }));
+  b14.run('refreshReviewQueue_', []);
+  const start17 = ui14.alerts.length;
+  PRESETS.forEach(m => {
+    const sid = 's_pre' + m;
+    b14.select('Review Queue', b14.sheets['Review Queue']._data.findIndex(r => r[0] === sid) + 1);
+    b14.run('reviewSelectedGrantPlus' + m, []);
+  });
+  await t.check('I17: presets +5/+10/+15/+30 grant in one click with no prompt or confirm', () => {
+    const dialogs = ui14.alerts.slice(start17);
+    assert.strictEqual(dialogs.filter(d => d.kind === 'prompt').length, 0, 'presets must not prompt for minutes');
+    assert.strictEqual(dialogs.filter(d => d.title === 'Add time to this exam?').length, 0, 'presets must not confirm');
+    PRESETS.forEach(m => {
+      const row = b14.rowFor('Sessions', 'Session ID', 's_pre' + m);
+      assert.strictEqual(row[b14.headerCol('Sessions', 'Duration (ms)') - 1], 3600000 + m * 60000, '+' + m + ' duration');
+      assert.strictEqual(row[b14.headerCol('Sessions', 'Extension (ms)') - 1], m * 60000, '+' + m + ' extension');
+    });
+    const results = dialogs.filter(d => d.title === 'Time granted');
+    assert.strictEqual(results.length, 4, 'one result per preset');
+    assert.ok(results.some(d => d.detail.includes('Added 30 minutes to 1 active session')), results.map(d => d.detail).join(' | '));
+    PRESETS.forEach(m => {
+      const audit = b14.debug.find(d => d[1] === 'admin_action' && d[2].includes('grant_time') && d[2].includes('+' + m + ' min preset'));
+      assert.ok(audit, '+' + m + ' preset not audited');
+    });
+  });
+
+  /* I18: a preset on a locked row is refused with zero mutation */
+  seedSession(b14.data('Sessions'), 'plock', { status: 'Locked (Violations)', count: 4, reason: 'max_violations', end: isoAgo(60000) });
+  b14.run('refreshReviewQueue_', []);
+  const start18 = ui14.alerts.length;
+  b14.select('Review Queue', b14.sheets['Review Queue']._data.findIndex(r => r[0] === 's_plock') + 1);
+  b14.run('reviewSelectedGrantPlus30', []);
+  await t.check('I18: a preset on a locked row shows the guard and changes nothing', () => {
+    const guard = ui14.alerts.slice(start18).find(a => a.title === 'Not a running exam');
+    assert.ok(guard && guard.detail.includes('s_plock'), 'guard missing: ' + JSON.stringify(ui14.alerts.slice(start18)));
+    const row = b14.rowFor('Sessions', 'Session ID', 's_plock');
+    assert.strictEqual(row[b14.headerCol('Sessions', 'Duration (ms)') - 1], 3600000, 'locked duration mutated');
+    assert.strictEqual(row[b14.headerCol('Sessions', 'Extension (ms)') - 1], undefined, 'locked extension mutated');
+  });
+
+  /* I19: the Grant Time submenu wires all four presets plus the custom flow */
+  const ui15 = makeUi();
+  const b15 = H.createBackendSandbox({ ui: ui15 });
+  b15.run('onOpen', []);
+  await t.check('I19: the menu nests the four preset grants under Queue Row: Grant Time', () => {
+    const root = ui15.menus.find(m => m.title === 'CRC Admin');
+    assert.ok(root, 'no admin menu');
+    const sub = root.items.find(i => i.type === 'submenu' && i.title === 'Queue Row: Grant Time');
+    assert.ok(sub, 'submenu missing: ' + JSON.stringify(root.items));
+    const items = sub.items.filter(i => i.type === 'item');
+    assert.deepStrictEqual(items.map(i => i.label),
+      ['+5 minutes', '+10 minutes', '+15 minutes', '+30 minutes', 'Custom minutes…'], items.map(i => i.label).join('|'));
+    assert.deepStrictEqual(items.map(i => i.fn),
+      ['reviewSelectedGrantPlus5', 'reviewSelectedGrantPlus10', 'reviewSelectedGrantPlus15', 'reviewSelectedGrantPlus30', 'reviewSelectedGrantTime']);
+  });
+
+  /* I20: the Granted chip shows cumulative extensions (+N) per session,
+        right next to Time Left, and stays blank for sessions with none */
+  const ui16 = makeUi();
+  const b16 = H.createBackendSandbox({ ui: ui16 });
+  const Q16 = b16.sheets['Review Queue'];
+  const setExt = (sid, ms) => {
+    const row = b16.rowFor('Sessions', 'Session ID', sid);
+    row[b16.headerCol('Sessions', 'Extension (ms)') - 1] = ms;
+  };
+  seedSession(b16.data('Sessions'), 'g1', { status: 'Active', count: 1 });
+  seedSession(b16.data('Sessions'), 'g2', { status: 'Locked (Violations)', count: 4, reason: 'max_violations', end: isoAgo(60000) });
+  seedSession(b16.data('Sessions'), 'g3', { status: 'Active', count: 1 });
+  setExt('s_g1', 15 * 60000);
+  setExt('s_g2', 75 * 60000); // two earlier grants accumulated
+  b16.run('refreshReviewQueue_', []);
+  await t.check('I20: Granted shows a +N chip for extended sessions and stays blank otherwise', () => {
+    assert.strictEqual(Q16._data[0][6], 'Granted', 'header: ' + Q16._data[0].join('|'));
+    const row = (sid) => Q16._data.find(r => r[0] === sid);
+    assert.strictEqual(row('s_g1')[6], '+15m', 'single grant: ' + row('s_g1')[6]);
+    assert.strictEqual(row('s_g2')[6], '+1h 15m', 'cumulative grants: ' + row('s_g2')[6]);
+    assert.strictEqual(row('s_g3')[6], '', 'no grant must stay blank');
   });
 };
