@@ -9,7 +9,7 @@
   --pop-card:     rgba(18, 24, 42, 0.9);
   --pop-border:   rgba(99,102,241,0.15);
   --pop-text:     #e2e8f0;
-  --pop-dim:      #64748b;
+  --pop-dim:      #94a3b8; /* slate-400: >= 4.5:1 on popup surfaces */
   --pop-accent:   #6366f1;
   --pop-success:  #10b981;
   --pop-idle:     #475569;
@@ -93,6 +93,22 @@ body {
   animation: popup-pulse 2s ease-in-out infinite;
 }
 
+.popup-dot--warn {
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245,158,11,0.5);
+}
+
+.popup-dot--danger {
+  background: #ef4444;
+  box-shadow: 0 0 10px rgba(239,68,68,0.55);
+  animation: popup-pulse 1.1s ease-in-out infinite;
+}
+
+.popup-dot--done {
+  background: #818cf8;
+  box-shadow: 0 0 8px rgba(129,140,248,0.5);
+}
+
 @keyframes popup-pulse {
   0%, 100% { box-shadow: 0 0 6px rgba(16,185,129,0.4); }
   50%      { box-shadow: 0 0 14px rgba(16,185,129,0.6); }
@@ -146,6 +162,11 @@ body {
   transform: translateY(0);
 }
 
+.popup-btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
 .popup-help {
   margin-top: 8px;
   font-size: 11px;
@@ -181,6 +202,12 @@ body {
   font-size: 12px;
   font-weight: 700;
   color: var(--pop-text);
+  /* long values (e.g. the "N of 4 — the 4th locks your exam" violation
+     sentence) wrap inside the row instead of overflowing the card */
+  flex: 1;
+  text-align: right;
+  margin-left: 10px;
+  line-height: 1.45;
 }
 
 .popup-mono {
@@ -188,12 +215,21 @@ body {
   font-size: 11px;
 }
 
+.value--warn {
+  color: #fbbf24;
+}
+
+.value--danger {
+  color: #f87171;
+  font-weight: 800;
+}
+
 /* ---------- Footer ---------- */
 .popup-footer {
   text-align: center;
   padding-top: 8px;
   font-size: 10px;
-  color: rgba(100,116,139,0.5);
+  color: var(--pop-dim);
   letter-spacing: 1px;
   text-transform: uppercase;
   font-weight: 600;

@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-03T00:00:00.000Z",
+  "title": "Design System: CRC Exam Lockdown",
+  "extensions": {
+    "colorMeta": {
+      "proctor-indigo": {
+        "role": "primary",
+        "displayName": "Proctor Indigo",
+        "canonical": "oklch(62% 0.2 267)",
+        "tonalRamp": ["oklch(38% 0.14 267)", "oklch(45% 0.16 267)", "oklch(52% 0.18 267)", "oklch(58% 0.19 267)", "oklch(62% 0.2 267)", "oklch(70% 0.16 267)", "oklch(80% 0.11 267)", "oklch(90% 0.05 267)"]
+      },
+      "pass-green": {
+        "role": "tertiary",
+        "displayName": "Pass Green",
+        "canonical": "oklch(67% 0.16 160)",
+        "tonalRamp": ["oklch(38% 0.1 160)", "oklch(46% 0.12 160)", "oklch(54% 0.14 160)", "oklch(61% 0.15 160)", "oklch(67% 0.16 160)", "oklch(76% 0.13 160)", "oklch(85% 0.09 160)", "oklch(94% 0.04 160)"]
+      },
+      "warn-amber": {
+        "role": "tertiary",
+        "displayName": "Warn Amber",
+        "canonical": "oklch(78% 0.15 80)",
+        "tonalRamp": ["oklch(45% 0.1 80)", "oklch(54% 0.12 80)", "oklch(62% 0.13 80)", "oklch(70% 0.14 80)", "oklch(78% 0.15 80)", "oklch(85% 0.12 80)", "oklch(92% 0.08 80)", "oklch(96% 0.03 80)"]
+      },
+      "violation-red": {
+        "role": "tertiary",
+        "displayName": "Violation Red",
+        "canonical": "oklch(58% 0.21 25)",
+        "tonalRamp": ["oklch(35% 0.14 25)", "oklch(42% 0.17 25)", "oklch(49% 0.19 25)", "oklch(54% 0.2 25)", "oklch(58% 0.21 25)", "oklch(68% 0.17 25)", "oklch(80% 0.12 25)", "oklch(92% 0.05 25)"]
+      },
+      "midnight-navy": {
+        "role": "neutral",
+        "displayName": "Midnight Invigilation",
+        "canonical": "oklch(16% 0.03 262)",
+        "tonalRamp": ["oklch(12% 0.03 262)", "oklch(16% 0.03 262)", "oklch(22% 0.035 262)", "oklch(30% 0.04 262)", "oklch(42% 0.045 262)", "oklch(56% 0.05 262)", "oklch(72% 0.04 262)", "oklch(88% 0.025 262)"]
+      },
+      "text-base": {
+        "role": "neutral",
+        "displayName": "Text Base",
+        "canonical": "oklch(90% 0.015 262)"
+      },
+      "text-dim": {
+        "role": "neutral",
+        "displayName": "Text Dim",
+        "canonical": "oklch(66% 0.03 262)"
+      }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Title", "purpose": "Overlay card headings, one per surface." },
+      "body": { "displayName": "Body", "purpose": "Card copy, toasts, buttons, inputs." },
+      "label": { "displayName": "Label", "purpose": "Rules panel titles, brand lines, kickers. Uppercase, tracked." },
+      "mono": { "displayName": "Mono", "purpose": "The countdown timer only. Time is never in Inter." }
+    },
+    "shadows": [
+      { "name": "card", "value": "0 8px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04)", "purpose": "The fullscreen overlay card. The only large shadow in the system." },
+      { "name": "chip", "value": "0 2px 16px rgba(0,0,0,0.30)", "purpose": "Timer, violation badge, toasts." },
+      { "name": "accent-glow", "value": "0 4px 20px rgba(99,102,241,0.35)", "purpose": "Primary buttons and focus rings, sized to the element." }
+    ],
+    "motion": [
+      { "name": "ease-out-quint", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "All entrances and state transitions." },
+      { "name": "duration-state", "value": "0.25s", "purpose": "Hover, focus, active state transitions." },
+      { "name": "duration-enter", "value": "0.4s", "purpose": "Toast and overlay entrances." },
+      { "name": "duration-timer", "value": "0.5s", "purpose": "Timer chip color escalation." },
+      { "name": "pulse-danger", "value": "1s ease-in-out infinite", "purpose": "Timer chip past 5 minutes; badge at 3+ violations." }
+    ],
+    "breakpoints": [
+      { "name": "popup", "value": "360px" },
+      { "name": "overlay", "value": "480px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single action on any surface. Indigo gradient with accent glow.",
+      "html": "<button class=\"ds-btn-primary\">I understand, Start Exam</button>",
+      "css": ".ds-btn-primary { font-family: 'Inter', system-ui, sans-serif; font-size: 15px; font-weight: 700; color: #ffffff; background: linear-gradient(135deg, #6366f1, #4f46e5); padding: 14px 32px; border: none; border-radius: 14px; cursor: pointer; box-shadow: 0 4px 20px rgba(99,102,241,0.35), 0 0 40px rgba(99,102,241,0.1); position: relative; overflow: hidden; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); } .ds-btn-primary::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 50%); pointer-events: none; } .ds-btn-primary:hover { background: linear-gradient(135deg, #818cf8, #6366f1); transform: translateY(-1px); box-shadow: 0 6px 30px rgba(99,102,241,0.35); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(99,102,241,0.35), 0 4px 20px rgba(99,102,241,0.35); } .ds-btn-primary:active { transform: scale(0.96); } .ds-btn-primary:disabled { background: rgba(99,102,241,0.25); color: rgba(255,255,255,0.4); box-shadow: none; cursor: not-allowed; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive confirmations only. The only red button.",
+      "html": "<button class=\"ds-btn-danger\">Clear all violations</button>",
+      "css": ".ds-btn-danger { font-family: 'Inter', system-ui, sans-serif; font-size: 15px; font-weight: 700; color: #ffffff; background: linear-gradient(135deg, #ef4444, #dc2626); padding: 14px 32px; border: none; border-radius: 14px; cursor: pointer; box-shadow: 0 4px 20px rgba(239,68,68,0.3); transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); } .ds-btn-danger:hover { transform: translateY(-1px); box-shadow: 0 6px 30px rgba(239,68,68,0.35); } .ds-btn-danger:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(239,68,68,0.3); } .ds-btn-danger:active { transform: scale(0.96); }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Glass fill, hairline border, indigo glow on focus.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field__label\">Full name</span><input class=\"ds-input\" placeholder=\"Enter your full name\" /></label>",
+      "css": ".ds-field { display: block; font-family: 'Inter', system-ui, sans-serif; } .ds-field__label { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; margin-bottom: 6px; } .ds-input { width: 100%; box-sizing: border-box; padding: 14px 18px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; font-family: 'Inter', system-ui, sans-serif; font-size: 15px; color: #f8fafc; outline: none; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); } .ds-input::placeholder { color: #64748b; } .ds-input:focus { border-color: #6366f1; background: rgba(99,102,241,0.06); box-shadow: 0 0 0 4px rgba(99,102,241,0.35); }"
+    },
+    {
+      "name": "Overlay Card",
+      "kind": "card",
+      "refersTo": "overlay-card",
+      "description": "The exam surface: glass navy, generous radius, indigo top line.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card__icon\">\uD83D\uDEE1\uFE0F</div><h2 class=\"ds-card__title\">CRC Exam Lockdown</h2><p class=\"ds-card__body\">This exam is proctored, and you have limited time to complete it.</p></div>",
+      "css": ".ds-card { position: relative; background: rgba(18, 24, 42, 0.85); border: 1px solid rgba(99,102,241,0.18); border-radius: 24px; padding: 48px 40px 40px; max-width: 480px; width: 92%; text-align: center; backdrop-filter: blur(24px) saturate(1.4); box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 8px 40px rgba(0,0,0,0.45), 0 0 80px rgba(99,102,241,0.35); font-family: 'Inter', system-ui, sans-serif; } .ds-card::before { content: ''; position: absolute; top: 0; left: 20%; right: 20%; height: 2px; background: linear-gradient(90deg, transparent, #6366f1, transparent); } .ds-card__icon { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 32px; background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(99,102,241,0.05)); border: 1px solid rgba(99,102,241,0.25); box-shadow: 0 0 30px rgba(99,102,241,0.35); } .ds-card__title { margin: 0 0 8px; font-size: 26px; font-weight: 800; color: #f8fafc; letter-spacing: -0.025em; } .ds-card__body { margin: 0; font-size: 15px; line-height: 1.65; color: #94a3b8; }"
+    },
+    {
+      "name": "Warning Toast",
+      "kind": "custom",
+      "refersTo": "toast",
+      "description": "Violation feedback: amber, slides in from the right, passes clicks through.",
+      "html": "<div class=\"ds-toast ds-toast--warning\"><div class=\"ds-toast__msg\">\u26A0\uFE0F Violation 1/4: copy/paste was blocked</div></div>",
+      "css": ".ds-toast { font-family: 'Inter', system-ui, sans-serif; font-size: 14px; font-weight: 500; line-height: 1.5; color: #ffffff; background: rgba(18, 24, 42, 0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px 22px; max-width: 380px; box-shadow: 0 8px 32px rgba(0,0,0,0.35); backdrop-filter: blur(16px) saturate(1.3); animation: dsToastIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); } .ds-toast--warning { background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(18,24,42,0.9)); } .ds-toast__msg { font-weight: 600; } @keyframes dsToastIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }"
+    },
+    {
+      "name": "Timer Chip",
+      "kind": "chip",
+      "refersTo": "timer-chip",
+      "description": "The wall clock: mono time on a status gradient, color-only escalation.",
+      "html": "<div class=\"ds-timer ds-timer--green\">1:23:45</div>",
+      "css": ".ds-timer { font-family: 'JetBrains Mono', 'Cascadia Code', monospace; font-size: 20px; font-weight: 700; color: #ffffff; padding: 12px 22px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(16px) saturate(1.3); transition: all 0.5s ease; } .ds-timer--green { background: linear-gradient(135deg, rgba(16,185,129,0.85), rgba(5,150,105,0.85)); box-shadow: 0 4px 24px rgba(16,185,129,0.25); } .ds-timer--red { background: linear-gradient(135deg, rgba(239,68,68,0.9), rgba(220,38,38,0.9)); box-shadow: 0 4px 24px rgba(239,68,68,0.3); animation: dsTimerPulse 1s ease-in-out infinite; } @keyframes dsTimerPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }"
+    },
+    {
+      "name": "Violation Badge",
+      "kind": "chip",
+      "refersTo": "violation-badge",
+      "description": "The running count, top-left, slate at rest and red at the threshold.",
+      "html": "<div class=\"ds-badge ds-badge--danger\">\u26A0\uFE0F Violations: 3 / 4</div>",
+      "css": ".ds-badge { font-family: 'Inter', system-ui, sans-serif; font-size: 13px; font-weight: 600; color: #ffffff; background: rgba(51,65,85,0.8); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 10px 16px; box-shadow: 0 2px 16px rgba(0,0,0,0.3); backdrop-filter: blur(12px); pointer-events: none; } .ds-badge--warn { background: rgba(245,158,11,0.75); } .ds-badge--danger { background: rgba(239,68,68,0.8); animation: dsBadgePulse 1.2s ease-in-out infinite; } @keyframes dsBadgePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Invigilator's Desk",
+    "overview": "A calm, well-ordered examination room. One proctor at a clean desk, a printed exam paper in front of them, a clock on the wall. Everything a student or invigilator needs is legible at a glance, nothing is decorative that is not functional, and the room never raises its voice. The dark navy surface is the examination hall at night: quiet, serious, and watchful, with the indigo accent as the lamp on the desk and the status colors as the only things allowed to be loud.",
+    "keyCharacteristics": [
+      "Deep navy base, indigo accent, status colors that mean something",
+      "Glass only on overlays and floating chips, never decorative",
+      "Mono type exclusively for time",
+      "Feedback that informs, never accuses",
+      "Restraint as the default; urgency is earned, not ambient"
+    ],
+    "rules": [
+      { "name": "The Only-Loud-Color Rule", "body": "At rest the surface is navy and indigo. The only saturated colors allowed anywhere are the four status colors, and each one appears only in its meaning.", "section": "colors" },
+      { "name": "The Glass-Only-on-Overlay Rule", "body": "Backdrop blur appears only on the fullscreen overlay card, floating chips, and the popup.", "section": "colors" },
+      { "name": "The Timer Rule", "body": "Time is always mono. The countdown timer is the only place JetBrains Mono appears in the student surface, and it never changes weight, only color.", "section": "typography" },
+      { "name": "The One-Heading Rule", "body": "One Title per surface. A card gets one h2, a popup gets one h1.", "section": "typography" },
+      { "name": "The Flat-at-Rest Rule", "body": "No ambient elevation. A surface at rest has no shadow unless it is an overlay card, a floating chip, or a primary action.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do let status colors carry meaning and nothing else. Green means safe, amber means caution, red means violation. Never use them decoratively.",
+      "Do set time in JetBrains Mono. Time is never in Inter.",
+      "Do use the indigo glow for focus and primary action.",
+      "Do announce violations and system interruptions the way they are: violations in amber or red with the count, system interruptions in neutral with NOT counted.",
+      "Do keep the overlay card's top accent line as the only stripe, and only as a top line.",
+      "Do keep glass to overlays, floating chips, and the popup.",
+      "Do keep every heading count at one per surface."
+    ],
+    "donts": [
+      "Don't build surveillance or big-brother aesthetics: no red-alert walls, no blinking guilt, no implied accusation.",
+      "Don't use consumer gamified flash: no emoji-heavy playful chrome, no candy gradients, no confetti on a serious exam surface.",
+      "Don't ship generic admin grayness: the invigilator's tools carry the same craft as the student's surface, just quieter.",
+      "Don't use side-stripe borders (border-left or border-right thicker than 1px as a colored accent) on cards, toasts, or alerts.",
+      "Don't use gradient text (background-clip: text).",
+      "Don't use glassmorphism decoratively.",
+      "Don't use em dashes in UI copy.",
+      "Don't let color be the only signal. Every status has a word next to it."
+    ]
+  }
+}
